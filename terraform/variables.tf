@@ -33,3 +33,13 @@ variable "name_prefix" {
   description = "Prefix for AWS resource names"
   type        = string
 }
+
+variable "ssh_allowed_cidr" {
+  description = "Allowed CIDRs for SSH"
+  type        = list(string)
+}
+
+variable "web_allowed_cidr" {
+  description = "Allowed CIDRs for Web access"
+  type        = list(string)
+}
