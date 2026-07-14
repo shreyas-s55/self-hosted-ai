@@ -1,0 +1,32 @@
+project:
+  name: self-hosted-ai
+  environment: dev
+
+aws:
+  region: us-east-1
+
+instance:
+  type: g6.xlarge
+  spot: true
+  disk_size_gb: 80
+
+network:
+  ssh_allowed_cidr:
+    - 0.0.0.0/0
+
+runtime:
+  engine: vllm
+
+model:
+  name: Qwen/Qwen3-8B-Instruct
+
+ui:
+  enabled: true
+  provider: open-webui
+
+tls:
+  enabled: false
+  domain: ""
+
+monitoring:
+  enabled: false
