@@ -40,10 +40,12 @@ module "security" {
 }
 
 module "compute" {
-
   source = "./modules/compute"
 
-  name_prefix = var.name_prefix
+  name_prefix           = var.name_prefix
+  subnet_id             = module.network.public_subnet_id
+  security_group_id     = module.security.security_group_id
+  instance_profile_name = module.identity.instance_profile_name
 
   tags = local.common_tags
 }
