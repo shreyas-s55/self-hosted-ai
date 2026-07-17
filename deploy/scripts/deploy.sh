@@ -8,9 +8,9 @@ echo "======================================="
 
 cd /opt/self-hosted-ai/deploy
 
-docker compose pull
+docker compose -f compose.yaml up -d
 
-docker compose up -d
+docker compose -f compose.yaml up -d
 
 docker ps
 

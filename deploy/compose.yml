@@ -1,0 +1,44 @@
+services:
+  caddy:
+    image: caddy:2.10
+
+    container_name: caddy
+
+    restart: unless-stopped
+
+    ports:
+      - "80:80"
+
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./data/caddy:/data
+      - ./data/caddy:/config
+
+    depends_on:
+      - open-webui
+
+    networks:
+      - ai-network
+
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+
+    container_name: open-webui
+
+    restart: unless-stopped
+
+    expose:
+      - "8080"
+
+    environment:
+      TZ: ${TZ}
+
+    volumes:
+      - ./data/open-webui:/app/backend/data
+
+    networks:
+      - ai-network
+
+networks:
+  ai-network:
+    driver: bridge
