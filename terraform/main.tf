@@ -38,3 +38,12 @@ module "security" {
 
   tags = local.common_tags
 }
+
+module "compute" {
+
+  source = "./modules/compute"
+
+  name_prefix = var.name_prefix
+
+  tags = local.common_tags
+}
