@@ -22,7 +22,8 @@ variable "instance_type" {
   description = "EC2 instance type"
   type        = string
 
-  default = "g4dn.xlarge"
+  #default = "g4dn.xlarge"
+  default = "t3.large"
 }
 
 variable "root_volume_size" {
