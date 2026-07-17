@@ -58,6 +58,27 @@ systemctl start docker
 
 usermod -aG docker ubuntu
 
+#########################################
+# Clone Application Repository
+#########################################
+
+mkdir -p /opt
+
+if [ ! -d "/opt/self-hosted-ai" ]; then
+    git clone https://github.com/shreyas-s55/self-hosted-ai.git /opt/self-hosted-ai
+else
+    cd /opt/self-hosted-ai
+    git pull
+fi
+
+#########################################
+# Deploy Application
+#########################################
+
+chmod +x /opt/self-hosted-ai/deploy/scripts/deploy.sh
+
+/opt/self-hosted-ai/deploy/scripts/deploy.sh
+
 ###########################################################
 # AWS CLI
 ###########################################################
