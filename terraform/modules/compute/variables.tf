@@ -18,6 +18,10 @@ variable "instance_profile_name" {
   type        = string
 }
 
+variable "instance_type" {
+  description = "EC2 instance type"
+  type        = string
+}
 
 variable "root_volume_size" {
   description = "Root EBS volume size in GB"
@@ -30,8 +34,6 @@ variable "use_spot_instance" {
   description = "Launch as Spot Instance"
 
   type = bool
-
-  default = true
 }
 
 variable "tags" {
