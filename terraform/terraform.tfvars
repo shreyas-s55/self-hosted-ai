@@ -11,6 +11,7 @@ public_subnet_cidr = "10.0.1.0/24"
 
 availability_zone = "us-east-1b"
 
+permissions_boundary_arn = null
 
 ssh_allowed_cidr = [
   "0.0.0.0/0"

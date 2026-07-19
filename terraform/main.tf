@@ -19,6 +19,8 @@ module "identity" {
 
   name_prefix = var.name_prefix
 
+  permissions_boundary_arn = var.permissions_boundary_arn
+
   tags = local.common_tags
 }
 

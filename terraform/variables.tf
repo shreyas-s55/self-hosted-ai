@@ -43,3 +43,9 @@ variable "web_allowed_cidr" {
   description = "Allowed CIDRs for Web access"
   type        = list(string)
 }
+
+variable "permissions_boundary_arn" {
+  description = "Optional IAM permissions boundary ARN."
+  type        = string
+  default     = null
+}
