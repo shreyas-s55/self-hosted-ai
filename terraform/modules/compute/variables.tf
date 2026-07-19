@@ -22,8 +22,8 @@ variable "instance_type" {
   description = "EC2 instance type"
   type        = string
 
-  #default = "g4dn.xlarge"
-  default = "t3.large"
+  default = "g5.2xlarge"
+  # default = "t3.large"
 }
 
 variable "root_volume_size" {
@@ -53,4 +53,8 @@ variable "allocate_elastic_ip" {
   type = bool
 
   default = false
+}
+
+variable "enable_gpu" {
+  type = bool
 }

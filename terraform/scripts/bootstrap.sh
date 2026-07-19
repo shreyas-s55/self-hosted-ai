@@ -72,6 +72,26 @@ else
 fi
 
 #########################################
+# Optional GPU Setup
+#########################################
+
+if [[ "${ENABLE_GPU:-false}" == "true" ]]; then
+    echo "=================================================="
+    echo "GPU support enabled"
+    echo "Installing NVIDIA components..."
+    echo "=================================================="
+
+    chmod +x /opt/self-hosted-ai/terraform/scripts/install_gpu.sh
+
+    /opt/self-hosted-ai/terraform/scripts/install_gpu.sh
+else
+    echo "=================================================="
+    echo "GPU support disabled"
+    echo "Skipping NVIDIA installation"
+    echo "=================================================="
+fi
+
+#########################################
 # Deploy Application
 #########################################
 

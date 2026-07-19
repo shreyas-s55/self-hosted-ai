@@ -49,3 +49,9 @@ variable "permissions_boundary_arn" {
   type        = string
   default     = null
 }
+
+variable "enable_gpu" {
+  description = "Enable GPU bootstrap"
+  type        = bool
+  default     = false
+}

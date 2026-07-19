@@ -7,7 +7,12 @@ resource "aws_instance" "this" {
   iam_instance_profile   = var.instance_profile_name
   key_name               = aws_key_pair.this.key_name
 
-  user_data = file("${path.module}/../../scripts/bootstrap.sh")
+  user_data = templatefile(
+    "${path.module}/../../scripts/bootstrap.sh",
+    {
+      enable_gpu = var.enable_gpu
+    }
+  )
 
   associate_public_ip_address = true
 

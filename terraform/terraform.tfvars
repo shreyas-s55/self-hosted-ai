@@ -20,3 +20,7 @@ ssh_allowed_cidr = [
 web_allowed_cidr = [
   "0.0.0.0/0"
 ]
+
+instance_type = "g5.2xlarge"
+
+enable_gpu = true
