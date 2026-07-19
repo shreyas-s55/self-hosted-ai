@@ -32,8 +32,7 @@ variable "root_volume_size" {
 
 variable "use_spot_instance" {
   description = "Launch as Spot Instance"
-
-  type = bool
+  type        = bool
 }
 
 variable "tags" {

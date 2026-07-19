@@ -55,3 +55,13 @@ variable "enable_gpu" {
   type        = bool
   default     = false
 }
+
+variable "instance_type" {
+  type    = string
+  default = "t3.large"
+}
+
+variable "use_spot_instance" {
+  type    = bool
+  default = false
+}

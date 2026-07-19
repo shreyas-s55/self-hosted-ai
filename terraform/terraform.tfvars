@@ -21,7 +21,7 @@ web_allowed_cidr = [
   "0.0.0.0/0"
 ]
 
-use_spot = false
-instance_type = "g5.2xlarge"
+use_spot_instance = false
+instance_type     = "g5.2xlarge"
 
 enable_gpu = true

@@ -17,9 +17,9 @@ resource "aws_security_group" "this" {
   ingress {
     description = "SSH"
 
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
+    from_port = 22
+    to_port   = 22
+    protocol  = "tcp"
 
     cidr_blocks = var.ssh_allowed_cidr
   }
@@ -30,9 +30,9 @@ resource "aws_security_group" "this" {
   ingress {
     description = "HTTP"
 
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
+    from_port = 80
+    to_port   = 80
+    protocol  = "tcp"
 
     cidr_blocks = var.web_allowed_cidr
   }
@@ -43,9 +43,9 @@ resource "aws_security_group" "this" {
   ingress {
     description = "HTTPS"
 
-    from_port   = 443
-    to_port     = 443
-    protocol    = "tcp"
+    from_port = 443
+    to_port   = 443
+    protocol  = "tcp"
 
     cidr_blocks = var.web_allowed_cidr
   }
@@ -57,9 +57,9 @@ resource "aws_security_group" "this" {
   ingress {
     description = "Temporary direct access during Caddy migration"
 
-    from_port   = 3000
-    to_port     = 3000
-    protocol    = "tcp"
+    from_port = 3000
+    to_port   = 3000
+    protocol  = "tcp"
 
     cidr_blocks = var.web_allowed_cidr
   }
@@ -70,9 +70,9 @@ resource "aws_security_group" "this" {
   egress {
     description = "Allow all outbound traffic"
 
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
+    from_port = 0
+    to_port   = 0
+    protocol  = "-1"
 
     cidr_blocks = [
       "0.0.0.0/0"
