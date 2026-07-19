@@ -18,13 +18,6 @@ variable "instance_profile_name" {
   type        = string
 }
 
-variable "instance_type" {
-  description = "EC2 instance type"
-  type        = string
-
-  default = "g5.2xlarge"
-  # default = "t3.large"
-}
 
 variable "root_volume_size" {
   description = "Root EBS volume size in GB"

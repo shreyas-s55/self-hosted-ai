@@ -48,7 +48,8 @@ module "compute" {
   subnet_id             = module.network.public_subnet_id
   security_group_id     = module.security.security_group_id
   instance_profile_name = module.identity.instance_profile_name
+  instance_type     = var.instance_type
+  use_spot_instance = var.use_spot_instance
   enable_gpu = var.enable_gpu
-
   tags = local.common_tags
 }
