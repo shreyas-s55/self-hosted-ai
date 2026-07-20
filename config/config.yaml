@@ -35,6 +35,10 @@ ui:
   enabled: true
   provider: open-webui
 
+gateway:
+  enabled: true
+  port: 9000
+
 tls:
   enabled: false
   domain: ""

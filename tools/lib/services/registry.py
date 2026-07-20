@@ -14,11 +14,13 @@ from typing import Any
 
 from lib.services.base import BaseService
 from lib.services.runtime import RuntimeService
+from lib.services.gateway import GatewayService
 from lib.services.webui import OpenWebUIService
 from lib.services.caddy import CaddyService
 
 _SERVICES: tuple[BaseService, ...] = (
     RuntimeService(),
+    GatewayService(),
     OpenWebUIService(),
     CaddyService(),
 )
