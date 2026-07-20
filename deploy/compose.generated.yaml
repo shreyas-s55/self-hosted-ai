@@ -2,20 +2,6 @@
 # Regenerate with: python3 tools/generate.py
 
 services:
-  caddy:
-    image: caddy:2.10
-    container_name: caddy
-    restart: unless-stopped
-    ports:
-    - 80:80
-    depends_on:
-    - open-webui
-    volumes:
-    - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
-    - ./data/caddy:/data
-    - ./data/caddy:/config
-    networks:
-    - ai-network
   vllm:
     image: vllm/vllm-openai:latest
     container_name: vllm
@@ -71,6 +57,20 @@ services:
       OPENAI_API_KEY: dummy
     volumes:
     - ./data/open-webui:/app/backend/data
+    networks:
+    - ai-network
+  caddy:
+    image: caddy:2.10
+    container_name: caddy
+    restart: unless-stopped
+    ports:
+    - 80:80
+    depends_on:
+    - open-webui
+    volumes:
+    - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+    - ./data/caddy:/data
+    - ./data/caddy:/config
     networks:
     - ai-network
 networks:
