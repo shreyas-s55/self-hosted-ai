@@ -72,8 +72,8 @@ async def list_models(request: Request) -> ModelList:
     )
 
 
-@router.post("/v1/chat/completions")
-async def chat_completions(request: Request) -> Response | StreamingResponse:
+@router.post("/v1/chat/completions", response_model=None)
+async def chat_completions(request: Request) -> Response:
     """Proxy chat completion requests to the upstream runtime.
 
     The gateway does not inspect or modify the request body — it is

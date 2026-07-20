@@ -108,6 +108,12 @@ sudo ./deploy/scripts/deploy.sh
 docker exec open-webui curl http://vllm:8000/v1/models
 ```
 
+
+
+docker compose -f deploy/compose.generated.yaml up -d --build
+
+
+
 ## Configuration
 
 All configuration is managed in `config/config.yaml`.
