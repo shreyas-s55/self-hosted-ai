@@ -72,28 +72,37 @@ else
 fi
 
 #########################################
-# Optional GPU Setup
+# GPU Setup Information
 #########################################
 
 if [[ "${enable_gpu}" == "true" ]]; then
+
+    echo
     echo "=================================================="
-    echo "GPU support enabled"
-    echo "Installing NVIDIA Driver..."
+    echo "GPU instance detected."
+    echo
+    echo "Run the following after SSH:"
+    echo
+    echo "sudo /opt/self-hosted-ai/terraform/scripts/install_gpu.sh"
+    echo
     echo "=================================================="
 
-    chmod +x /opt/self-hosted-ai/terraform/scripts/install_gpu.sh
-
-    /opt/self-hosted-ai/terraform/scripts/install_gpu.sh
 else
+
+    echo
     echo "=================================================="
-    echo "GPU support disabled"
-    echo "Skipping NVIDIA installation"
+    echo "CPU deployment selected."
     echo "=================================================="
+
 fi
 
 #########################################
 # Deploy Application
 #########################################
+
+chmod +x /opt/self-hosted-ai/terraform/scripts/install_gpu.sh
+
+chmod +x /opt/self-hosted-ai/terraform/scripts/install_gpu_runtime.sh
 
 chmod +x /opt/self-hosted-ai/deploy/scripts/deploy.sh
 

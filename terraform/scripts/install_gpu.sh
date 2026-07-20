@@ -2,49 +2,68 @@
 
 set -euxo pipefail
 
-echo "========================================="
-echo "GPU installation started"
-echo "========================================="
+LOG_FILE="/var/log/install_gpu.log"
+
+exec > >(tee -a "$LOG_FILE")
+exec 2>&1
+
+echo "=================================================="
+echo "Installing NVIDIA Driver"
+echo "Started: $(date)"
+echo "=================================================="
 
 export DEBIAN_FRONTEND=noninteractive
 
-#########################################
-# Install prerequisites
-#########################################
+#######################################################
+# Update
+#######################################################
 
 apt-get update
 
+#######################################################
+# Install prerequisites
+#######################################################
+
 apt-get install -y \
-    build-essential \
-    gcc \
-    make \
-    dkms \
-    curl \
-    wget \
-    gnupg \
-    lsb-release \
     ubuntu-drivers-common
 
-#########################################
-# Show detected GPU
-#########################################
+#######################################################
+# Detect GPU
+#######################################################
 
-lspci | grep -i nvidia || true
+echo
+echo "Detected GPU:"
+echo
 
-echo "========================================="
-echo "Recommended NVIDIA Drivers"
-echo "========================================="
+lspci | grep -i nvidia
+
+echo
+echo "Recommended Driver:"
+echo
 
 ubuntu-drivers devices
 
-#########################################
-# Install NVIDIA Driver
-#########################################
+#######################################################
+# Install Driver
+#######################################################
 
 ubuntu-drivers install
 
-echo "========================================="
-echo "GPU driver installation completed"
+#######################################################
+# Finished
+#######################################################
+
 echo
-echo "A reboot is required before continuing."
-echo "========================================="
+echo "=================================================="
+echo "Driver installation completed."
+echo
+echo "A reboot is required."
+echo
+echo "Run:"
+echo
+echo "sudo reboot"
+echo
+echo "After reboot execute:"
+echo
+echo "sudo /opt/self-hosted-ai/terraform/scripts/install_gpu_runtime.sh"
+echo "=================================================="
