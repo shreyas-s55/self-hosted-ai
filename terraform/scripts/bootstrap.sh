@@ -26,7 +26,9 @@ apt-get install -y \
     unzip \
     gnupg \
     lsb-release \
-    software-properties-common
+    software-properties-common \
+    python3 \
+    python3-yaml
 
 ###########################################################
 # Docker
