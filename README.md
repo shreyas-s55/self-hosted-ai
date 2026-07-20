@@ -99,7 +99,7 @@ docker run --rm --gpus all nvidia/cuda:13.0.1-base-ubuntu24.04 nvidia-smi
 
 ```bash
 cd /opt/self-hosted-ai
-./deploy/scripts/deploy.sh
+sudo ./deploy/scripts/deploy.sh
 ```
 
 ### 4. Verify

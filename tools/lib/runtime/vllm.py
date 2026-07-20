@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from lib.runtime.base import RuntimeAdapter
+from lib.runtime.base import RuntimeAdapter, RuntimeCapabilities
 
 
 class VLLMAdapter(RuntimeAdapter):
@@ -15,6 +15,16 @@ class VLLMAdapter(RuntimeAdapter):
     @property
     def image(self) -> str:
         return "vllm/vllm-openai:latest"
+
+    def capabilities(self) -> RuntimeCapabilities:
+        return RuntimeCapabilities(
+            tool_calling=True,
+            json_mode=True,
+            structured_output=True,
+            vision=True,
+            embeddings=True,
+            parallel_tool_calls=True,
+        )
 
     def build_command(self, config: dict[str, Any]) -> list[str]:
         model = config["model"]
