@@ -1,5 +1,11 @@
 services:
+
+  ############################################################
+  # Caddy
+  ############################################################
+
   caddy:
+
     image: caddy:2.10
 
     container_name: caddy
@@ -9,29 +15,83 @@ services:
     ports:
       - "80:80"
 
+    depends_on:
+      - open-webui
+
     volumes:
       - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
       - ./data/caddy:/data
       - ./data/caddy:/config
 
-    depends_on:
-      - open-webui
+    networks:
+      - ai-network
+
+  ############################################################
+  # vLLM
+  ############################################################
+
+  vllm:
+    image: vllm/vllm-openai:latest
+
+    container_name: vllm
+
+    restart: unless-stopped
+
+    runtime: nvidia
+
+    ipc: host
+
+    command:
+      - --model
+      - ${MODEL_NAME}
+      - --host
+      - 0.0.0.0
+      - --port
+      - ${RUNTIME_PORT}
+      - --dtype
+      - ${MODEL_DTYPE}
+      - --gpu-memory-utilization
+      - ${GPU_MEMORY_UTILIZATION}
+      - --max-model-len
+      - ${MAX_MODEL_LEN}
+
+    environment:
+      HUGGING_FACE_HUB_TOKEN: ${HF_TOKEN}
+
+    volumes:
+      - ${MODEL_CACHE_DIR}:/root/.cache/huggingface
+
+    expose:
+      - "8000"
 
     networks:
       - ai-network
 
+  ############################################################
+  # Open WebUI
+  ############################################################
+
   open-webui:
+
     image: ghcr.io/open-webui/open-webui:main
 
     container_name: open-webui
 
     restart: unless-stopped
 
+    depends_on:
+      - vllm
+
     expose:
       - "8080"
 
     environment:
+
       TZ: ${TZ}
+
+      OPENAI_API_BASE_URL: http://vllm:${RUNTIME_PORT}/v1
+
+      OPENAI_API_KEY: dummy
 
     volumes:
       - ./data/open-webui:/app/backend/data
@@ -39,6 +99,10 @@ services:
     networks:
       - ai-network
 
+############################################################
+
 networks:
+
   ai-network:
+
     driver: bridge
