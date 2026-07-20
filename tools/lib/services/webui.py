@@ -46,7 +46,7 @@ class OpenWebUIService(BaseService):
             "depends_on": depends_on,
             "expose": ["8080"],
             "environment": {
-                "TZ": "${TZ}",
+                "TZ": "UTC",
                 "OPENAI_API_BASE_URL": api_base_url,
                 "OPENAI_API_KEY": "dummy",
             },

@@ -25,19 +25,19 @@ cd deploy
 # Pull images
 echo
 echo "Pulling images..."
-docker compose -f compose.generated.yaml pull
+docker compose -f compose.generated.yaml --env-file .env pull
 
 # Start services and wait for health
 echo
 echo "Starting services..."
-docker compose -f compose.generated.yaml up -d \
+docker compose -f compose.generated.yaml --env-file .env up -d \
     --wait \
     --wait-timeout 600 \
     --remove-orphans
 
 # Show status
 echo
-docker compose -f compose.generated.yaml ps
+docker compose -f compose.generated.yaml --env-file .env ps
 
 echo
 echo "======================================="

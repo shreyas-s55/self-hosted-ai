@@ -50,7 +50,7 @@ class RuntimeService(BaseService):
                 "HUGGING_FACE_HUB_TOKEN": "${HF_TOKEN}",
             },
             "volumes": [
-                "${MODEL_CACHE_DIR}:/root/.cache/huggingface",
+                f"{config['model']['download_dir']}:/root/.cache/huggingface",
             ],
             "expose": [str(port)],
             "healthcheck": {

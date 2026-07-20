@@ -21,10 +21,10 @@ def generate_env(config: dict[str, Any], output_path: Path) -> None:
         config: The project configuration dictionary.
         output_path: Path to write the .env file.
     """
+    # Only secrets belong in .env — non-secret values are inlined
+    # directly in the generated compose file at generate time.
     env_vars = {
-        "TZ": "UTC",
         "HF_TOKEN": str(config["model"].get("hf_token", "")),
-        "MODEL_CACHE_DIR": str(config["model"]["download_dir"]),
     }
     with open(output_path, "w") as f:
         for key, value in env_vars.items():

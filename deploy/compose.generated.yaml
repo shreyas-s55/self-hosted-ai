@@ -27,7 +27,7 @@ services:
     environment:
       HUGGING_FACE_HUB_TOKEN: ${HF_TOKEN}
     volumes:
-    - ${MODEL_CACHE_DIR}:/root/.cache/huggingface
+    - ./data/models:/root/.cache/huggingface
     expose:
     - '8000'
     healthcheck:
@@ -81,7 +81,7 @@ services:
     expose:
     - '8080'
     environment:
-      TZ: ${TZ}
+      TZ: UTC
       OPENAI_API_BASE_URL: http://gateway:9000/v1
       OPENAI_API_KEY: dummy
     volumes:
