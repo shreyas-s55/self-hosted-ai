@@ -2,44 +2,42 @@
 
 set -euo pipefail
 
+PROJECT_ROOT="/opt/self-hosted-ai"
+
 echo "======================================="
 echo "Deploying Self Hosted AI"
 echo "======================================="
 
-cd /opt/self-hosted-ai
+cd "${PROJECT_ROOT}"
 
-python3 - <<'PY'
-import yaml
-from pathlib import Path
+# Validate configuration
+echo
+echo "Validating configuration..."
+python3 tools/validate.py
 
-config = yaml.safe_load(open("config/config.yaml"))
-
-env = {
-    "TZ": "UTC",
-    "MODEL_NAME": config["model"]["name"],
-    "MODEL_DTYPE": config["model"]["dtype"],
-    "GPU_MEMORY_UTILIZATION": config["model"]["gpu_memory_utilization"],
-    "MAX_MODEL_LEN": config["model"]["max_model_len"],
-    "MODEL_CACHE_DIR": config["model"]["download_dir"],
-    "HF_TOKEN": config["model"]["hf_token"],
-    "RUNTIME_ENGINE": config["runtime"]["engine"],
-    "RUNTIME_PORT": config["runtime"]["port"],
-}
-
-deploy_dir = Path("deploy")
-
-with open(deploy_dir / ".env", "w") as f:
-    for k, v in env.items():
-        f.write(f"{k}={v}\n")
-PY
+# Generate deployment artifacts
+echo
+echo "Generating deployment artifacts..."
+python3 tools/generate.py
 
 cd deploy
 
-docker compose pull
+# Pull images
+echo
+echo "Pulling images..."
+docker compose -f compose.generated.yaml pull
 
-docker compose up -d
+# Start services and wait for health
+echo
+echo "Starting services..."
+docker compose -f compose.generated.yaml up -d \
+    --wait \
+    --wait-timeout 600 \
+    --remove-orphans
 
-docker compose ps
+# Show status
+echo
+docker compose -f compose.generated.yaml ps
 
 echo
 echo "======================================="

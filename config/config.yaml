@@ -19,12 +19,17 @@ runtime:
   port: 8000
 
 model:
-  name: Qwen/Qwen3-8B-Instruct
+  name: Qwen/Qwen2.5-7B-Instruct
   dtype: auto
   gpu_memory_utilization: 0.90
   max_model_len: 8192
   download_dir: ./data/models
   hf_token: ""
+
+features:
+  tool_calling:
+    enabled: true
+    parser: hermes
 
 ui:
   enabled: true
