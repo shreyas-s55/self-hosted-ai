@@ -57,6 +57,8 @@ services:
       GATEWAY_RUNTIME_URL: http://vllm:8000/v1
       GATEWAY_RUNTIME: vllm
       GATEWAY_MODEL_NAME: Qwen/Qwen2.5-7B-Instruct
+      GATEWAY_AUTH_ENABLED: 'true'
+      GATEWAY_API_KEY: dummy
     expose:
     - '9000'
     healthcheck:

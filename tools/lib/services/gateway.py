@@ -53,6 +53,12 @@ class GatewayService(BaseService):
                 "GATEWAY_RUNTIME_URL": f"http://{engine}:{port}/v1",
                 "GATEWAY_RUNTIME": engine,
                 "GATEWAY_MODEL_NAME": model_name,
+
+                # Authentication
+                "GATEWAY_AUTH_ENABLED": str(
+                    config["gateway"]["authentication"]["enabled"]
+                ).lower(),
+                "GATEWAY_API_KEY": config["gateway"]["authentication"]["api_key"],
             },
             "expose": [str(_CONTAINER_PORT)],
             "healthcheck": {

@@ -48,7 +48,11 @@ class OpenWebUIService(BaseService):
             "environment": {
                 "TZ": "UTC",
                 "OPENAI_API_BASE_URL": api_base_url,
-                "OPENAI_API_KEY": "dummy",
+                "OPENAI_API_KEY": (
+                    config["gateway"]["authentication"]["api_key"]
+                    if gateway_enabled
+                    else "dummy"
+                ),
             },
             "volumes": [
                 "./data/open-webui:/app/backend/data",

@@ -38,6 +38,9 @@ ui:
 gateway:
   enabled: true
   port: 9000
+  authentication:
+    enabled: true
+    api_key: auto
 
 tls:
   enabled: false
