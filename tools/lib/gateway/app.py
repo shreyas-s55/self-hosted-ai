@@ -8,8 +8,9 @@ Required environment variables
 ``GATEWAY_RUNTIME_URL``
     Base URL of the upstream runtime, e.g. ``http://vllm:8000/v1``.
 
-``GATEWAY_MODEL_NAME``
-    Name of the loaded model, e.g. ``Qwen/Qwen2.5-7B-Instruct``.
+``GATEWAY_MODELS``
+    Comma-separated deployment aliases exposed by this gateway,
+    e.g. ``"chat"`` or ``"chat,coder"``.
 
 Optional environment variables
 -------------------------------
@@ -38,7 +39,7 @@ class GatewaySettings:
 
     runtime_url: str
     runtime: str
-    model_name: str
+    aliases: tuple[str, ...]
 
 
 def _load_settings() -> GatewaySettings:
@@ -46,10 +47,14 @@ def _load_settings() -> GatewaySettings:
     # Derive a human-readable runtime name from the URL host when not set.
     # "http://vllm:8000/v1" → "vllm"
     default_runtime = runtime_url.split("//")[-1].split(":")[0].split("/")[0]
+
+    models_raw = os.environ.get("GATEWAY_MODELS", "")
+    aliases = tuple(a.strip() for a in models_raw.split(",") if a.strip())
+
     return GatewaySettings(
         runtime_url=runtime_url,
         runtime=os.environ.get("GATEWAY_RUNTIME", default_runtime),
-        model_name=os.environ["GATEWAY_MODEL_NAME"],
+        aliases=aliases,
     )
 
 

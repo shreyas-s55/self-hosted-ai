@@ -26,17 +26,21 @@ class VLLMAdapter(RuntimeAdapter):
             parallel_tool_calls=True,
         )
 
-    def build_command(self, config: dict[str, Any]) -> list[str]:
-        model = config["model"]
+    def build_command(
+        self,
+        config: dict[str, Any],
+        huggingface_repo: str,
+        parameters: dict[str, Any],
+    ) -> list[str]:
         runtime = config["runtime"]
 
         command = [
-            "--model", str(model["name"]),
+            "--model", huggingface_repo,
             "--host", "0.0.0.0",
             "--port", str(runtime["port"]),
-            "--dtype", str(model["dtype"]),
-            "--gpu-memory-utilization", str(model["gpu_memory_utilization"]),
-            "--max-model-len", str(model["max_model_len"]),
+            "--dtype", str(parameters.get("dtype", "auto")),
+            "--gpu-memory-utilization", str(parameters.get("gpu_memory_utilization", 0.90)),
+            "--max-model-len", str(parameters.get("max_model_len", 8192)),
         ]
 
         features = config.get("features", {})

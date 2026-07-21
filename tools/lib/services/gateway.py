@@ -2,6 +2,7 @@
 
 from typing import Any
 
+from lib.deployment import DeploymentResolver
 from lib.services.base import BaseService
 
 # Internal port the gateway container always listens on.
@@ -29,8 +30,10 @@ class GatewayService(BaseService):
         runtime = config["runtime"]
         engine = runtime["engine"]
         port = runtime["port"]
-        model_name = config["model"]["name"]
         host_port = config.get("gateway", {}).get("port", _CONTAINER_PORT)
+
+        resolver = DeploymentResolver(config)
+        gateway_models = ",".join(resolver.aliases())
 
         healthcheck_script = (
             "import urllib.request; "
@@ -52,7 +55,7 @@ class GatewayService(BaseService):
             "environment": {
                 "GATEWAY_RUNTIME_URL": f"http://{engine}:{port}/v1",
                 "GATEWAY_RUNTIME": engine,
-                "GATEWAY_MODEL_NAME": model_name,
+                "GATEWAY_MODELS": gateway_models,
 
                 # Authentication
                 "GATEWAY_AUTH_ENABLED": str(
@@ -70,3 +73,4 @@ class GatewayService(BaseService):
             },
             "networks": ["ai-network"],
         }
+

@@ -17,7 +17,7 @@ class PlatformInfo(BaseModel):
     platform: str = "self-hosted-ai"
     version: str
     runtime: str
-    model: str
+    models: list[str]
     status: str
 
 

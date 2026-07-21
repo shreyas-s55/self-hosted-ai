@@ -10,8 +10,14 @@ service dict around the adapter's output.
 
 from typing import Any
 
+from lib.deployment import DeploymentResolver
 from lib.runtime import get_runtime_adapter
 from lib.services.base import BaseService
+
+# Primary deployment alias used for the runtime service.
+# A single runtime instance serves the first configured deployment model.
+# This is intentionally hardcoded until multi-instance routing is supported.
+_PRIMARY_ALIAS = "chat"
 
 
 class RuntimeService(BaseService):
@@ -31,8 +37,11 @@ class RuntimeService(BaseService):
         runtime = config["runtime"]
         port = runtime["port"]
 
+        resolver = DeploymentResolver(config)
+        deployment, metadata = resolver.resolve(_PRIMARY_ALIAS)
+
         adapter = get_runtime_adapter(runtime["engine"])
-        command = adapter.build_command(config)
+        command = adapter.build_command(config, metadata.huggingface_repo, deployment.parameters)
 
         healthcheck_script = (
             "import urllib.request; "
@@ -50,7 +59,7 @@ class RuntimeService(BaseService):
                 "HUGGING_FACE_HUB_TOKEN": "${HF_TOKEN}",
             },
             "volumes": [
-                f"{config['model']['download_dir']}:/root/.cache/huggingface",
+                f"{config['storage']['download_dir']}:/root/.cache/huggingface",
             ],
             "expose": [str(port)],
             "healthcheck": {

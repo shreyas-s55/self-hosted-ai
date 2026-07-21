@@ -38,7 +38,7 @@ async def platform_info(request: Request) -> PlatformInfo:
     return PlatformInfo(
         version="0.1.0",
         runtime=s.runtime,
-        model=s.model_name,
+        models=list(s.aliases),
         status="ok",
     )
 
@@ -51,23 +51,21 @@ async def health() -> HealthResponse:
 
 @router.get("/v1/models", response_model=ModelList)
 async def list_models(request: Request) -> ModelList:
-    """Return the loaded model from the Model Registry.
+    """Return the configured deployment aliases.
 
-    This endpoint does NOT call the upstream runtime.  It returns
-    metadata from the registry for the model configured at startup.
+    Aliases are set at startup via ``GATEWAY_MODELS`` and represent the
+    model names clients should use in API requests.  HuggingFace repository
+    names are never exposed through this endpoint.
     """
-    from lib.models import MODEL_REGISTRY
-
     s = request.app.state.settings
-    metadata = MODEL_REGISTRY.get(s.model_name)
-
     return ModelList(
         data=[
             ModelObject(
-                id=s.model_name,
+                id=alias,
                 created=int(time.time()),
-                owned_by=metadata.family if metadata else "self-hosted",
+                owned_by="self-hosted",
             )
+            for alias in s.aliases
         ]
     )
 

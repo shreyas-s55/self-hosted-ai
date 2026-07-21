@@ -26,7 +26,7 @@ def generate_env(config: dict[str, Any], output_path: Path) -> None:
     # Only secrets belong in .env.
     # Non-secret values are inlined directly into the generated compose file.
     env_vars = {
-        "HF_TOKEN": str(config["model"].get("hf_token", "")),
+        "HF_TOKEN": str(config.get("huggingface", {}).get("token", "")),
     }
 
     with open(output_path, "w") as f:

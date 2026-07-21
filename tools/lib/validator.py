@@ -4,10 +4,9 @@ Validation runs in four passes:
 
 1. Structural — required sections and field types.
 2. Runtime compatibility — is the selected engine supported?
-3. Model compatibility — if the model is in the registry, do its
-   capabilities match the enabled features?
+3. Deployment models — do all configured aliases resolve in the catalog?
 4. Feature compatibility — cross-check features against both the
-   runtime engine and the model.
+   runtime engine and every deployed model.
 """
 
 from dataclasses import dataclass
@@ -40,7 +39,7 @@ def validate_config(config: dict[str, Any]) -> list[ValidationError]:
     errors: list[ValidationError] = []
 
     errors.extend(_validate_runtime(config))
-    errors.extend(_validate_model(config))
+    errors.extend(_validate_deployments(config))
     errors.extend(_validate_features(config))
 
     return errors
@@ -79,16 +78,52 @@ def _validate_runtime(config: dict[str, Any]) -> list[ValidationError]:
     return errors
 
 
-def _validate_model(config: dict[str, Any]) -> list[ValidationError]:
+def _validate_deployments(config: dict[str, Any]) -> list[ValidationError]:
+    """Validate the ``models`` section against the platform model catalog."""
     errors: list[ValidationError] = []
-    model = config.get("model")
 
-    if model is None:
-        errors.append(ValidationError("model", "Missing 'model' section"))
+    models_cfg = config.get("models")
+
+    if models_cfg is None:
+        errors.append(ValidationError("models", "Missing 'models' section"))
         return errors
 
-    if not model.get("name"):
-        errors.append(ValidationError("model.name", "Missing 'name'"))
+    if not isinstance(models_cfg, dict):
+        errors.append(ValidationError("models", "'models' must be a mapping"))
+        return errors
+
+    if not models_cfg:
+        errors.append(ValidationError("models", "At least one deployment model is required"))
+        return errors
+
+    for alias, model_cfg in models_cfg.items():
+        if not isinstance(model_cfg, dict):
+            errors.append(ValidationError(
+                f"models.{alias}",
+                "Must be a mapping with at least a 'source' key",
+            ))
+            continue
+
+        source = model_cfg.get("source")
+        if not source:
+            errors.append(ValidationError(
+                f"models.{alias}.source",
+                "Missing required field 'source'",
+            ))
+            continue
+
+        if MODEL_REGISTRY.get(source) is None:
+            errors.append(ValidationError(
+                f"models.{alias}.source",
+                f"Unknown model source '{source}'. Not found in the model catalog.",
+            ))
+
+        params = model_cfg.get("parameters", {})
+        if params is not None and not isinstance(params, dict):
+            errors.append(ValidationError(
+                f"models.{alias}.parameters",
+                "'parameters' must be a mapping",
+            ))
 
     return errors
 
@@ -97,10 +132,7 @@ def _validate_features(config: dict[str, Any]) -> list[ValidationError]:
     """Cross-check enabled features against runtime and model capabilities."""
     errors: list[ValidationError] = []
 
-    runtime_cfg = config.get("runtime", {})
-    engine = runtime_cfg.get("engine")
-    model_cfg = config.get("model", {})
-    model_name = model_cfg.get("name", "")
+    engine = config.get("runtime", {}).get("engine")
     features = config.get("features", {})
 
     # Resolve runtime capabilities (skip if engine is invalid — already reported)
@@ -108,8 +140,14 @@ def _validate_features(config: dict[str, Any]) -> list[ValidationError]:
     if engine and engine in SUPPORTED_RUNTIMES:
         runtime_caps = get_runtime_adapter(engine).capabilities()
 
-    # Resolve model metadata (None for unknown / full-repo configs)
-    model_meta = MODEL_REGISTRY.get(model_name) if model_name else None
+    # Collect metadata for every deployed model that resolves in the catalog
+    deployed_meta = []
+    for alias, model_cfg in config.get("models", {}).items():
+        if isinstance(model_cfg, dict):
+            source = model_cfg.get("source", "")
+            meta = MODEL_REGISTRY.get(source) if source else None
+            if meta is not None:
+                deployed_meta.append((alias, meta))
 
     # ── tool_calling ──────────────────────────────────────────────────────
     tool_calling = features.get("tool_calling", {})
@@ -126,13 +164,13 @@ def _validate_features(config: dict[str, Any]) -> list[ValidationError]:
                 f"Runtime '{engine}' does not support tool calling",
             ))
 
-        if model_meta is not None and not model_meta.supports_tool_calling:
-            errors.append(ValidationError(
-                "features.tool_calling",
-                f"Model '{model_meta.name}' ('{model_meta.huggingface_repo}') "
-                "does not support tool calling. "
-                "Set features.tool_calling.enabled: false or choose a compatible model.",
-            ))
+        for alias, meta in deployed_meta:
+            if not meta.supports_tool_calling:
+                errors.append(ValidationError(
+                    "features.tool_calling",
+                    f"Model '{alias}' ('{meta.huggingface_repo}') does not support tool calling. "
+                    "Set features.tool_calling.enabled: false or choose a compatible model.",
+                ))
 
     # ── vision ────────────────────────────────────────────────────────────
     vision = features.get("vision", {})
@@ -143,22 +181,24 @@ def _validate_features(config: dict[str, Any]) -> list[ValidationError]:
                 f"Runtime '{engine}' does not support vision inputs",
             ))
 
-        if model_meta is not None and not model_meta.supports_vision:
-            errors.append(ValidationError(
-                "features.vision",
-                f"Model '{model_meta.name}' does not support vision inputs. "
-                "Choose a vision-capable model (e.g. 'gemma') or disable this feature.",
-            ))
+        for alias, meta in deployed_meta:
+            if not meta.supports_vision:
+                errors.append(ValidationError(
+                    "features.vision",
+                    f"Model '{alias}' ('{meta.name}') does not support vision inputs. "
+                    "Choose a vision-capable model or disable this feature.",
+                ))
 
-    # ── reasoning profile ─────────────────────────────────────────────────
+    # ── reasoning ─────────────────────────────────────────────────────────
     reasoning = features.get("reasoning", {})
     if reasoning.get("enabled", False):
-        if model_meta is not None and not model_meta.supports_reasoning:
-            errors.append(ValidationError(
-                "features.reasoning",
-                f"Model '{model_meta.name}' does not support reasoning. "
-                "Use a reasoning model (e.g. 'deepseek-r1-distill') or disable this feature.",
-            ))
+        for alias, meta in deployed_meta:
+            if not meta.supports_reasoning:
+                errors.append(ValidationError(
+                    "features.reasoning",
+                    f"Model '{alias}' ('{meta.name}') does not support reasoning. "
+                    "Use a reasoning model (e.g. 'deepseek-r1-distill') or disable this feature.",
+                ))
 
     return errors
 

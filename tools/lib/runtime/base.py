@@ -66,11 +66,25 @@ class RuntimeAdapter(ABC):
         """
 
     @abstractmethod
-    def build_command(self, config: dict[str, Any]) -> list[str]:
+    def build_command(
+        self,
+        config: dict[str, Any],
+        huggingface_repo: str,
+        parameters: dict[str, Any],
+    ) -> list[str]:
         """Generate runtime command-line arguments from configuration.
 
         Args:
-            config: The full project configuration dictionary.
+            config:
+                The full project configuration dictionary.  Used for
+                global settings such as ``runtime.port`` and ``features``.
+            huggingface_repo:
+                The HuggingFace model repository string, e.g.
+                ``"Qwen/Qwen2.5-7B-Instruct"``.
+            parameters:
+                Per-deployment runtime parameters (dtype,
+                gpu_memory_utilization, max_model_len, etc.) sourced
+                from the deployment model definition in ``config.yaml``.
 
         Returns:
             A list of command-line arguments for the runtime process.
