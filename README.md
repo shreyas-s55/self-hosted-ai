@@ -112,6 +112,13 @@ docker exec open-webui curl http://vllm:8000/v1/models
 docker compose -f deploy/compose.generated.yaml up -d --build
 
 
+```bash
+get token
+
+grep GATEWAY_API_KEY deploy/compose.generated.yaml
+
+curl -H "Authorization: Bearer $token" http://localhost:9000/v1/models
+```
 
 ## Configuration
 

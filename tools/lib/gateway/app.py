@@ -30,7 +30,7 @@ from lib.gateway.middleware import (
 )
 from lib.gateway.proxy import RuntimeProxy
 from lib.gateway.routes import router
-
+from lib.gateway.logging import LoggingMiddleware
 
 @dataclass(frozen=True)
 class GatewaySettings:
@@ -76,6 +76,7 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
     app.add_middleware(RequestIDMiddleware)
+    app.add_middleware(LoggingMiddleware)
     app.add_middleware(AuthenticationMiddleware)
     app.include_router(router)
     return app
