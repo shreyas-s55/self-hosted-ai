@@ -24,7 +24,10 @@ from dataclasses import dataclass
 
 from fastapi import FastAPI
 
-from lib.gateway.middleware import AuthenticationMiddleware
+from lib.gateway.middleware import (
+    AuthenticationMiddleware,
+    RequestIDMiddleware,
+)
 from lib.gateway.proxy import RuntimeProxy
 from lib.gateway.routes import router
 
@@ -72,6 +75,7 @@ def create_app() -> FastAPI:
         version="0.1.0",
         lifespan=lifespan,
     )
+    app.add_middleware(RequestIDMiddleware)
     app.add_middleware(AuthenticationMiddleware)
     app.include_router(router)
     return app
