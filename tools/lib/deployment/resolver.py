@@ -1,8 +1,26 @@
-"""Deployment resolver."""
+"""Deployment resolver.
+
+This module bridges two distinct layers:
+
+* **Deployment layer** (:class:`DeploymentModel`) — what *this specific
+  deployment* exposes: a public alias (e.g. ``"chat"``), the backing
+  source name from the platform catalog (e.g. ``"qwen-chat"``), and
+  per-deployment runtime parameters such as dtype and context length.
+
+* **Platform catalog** (:class:`~lib.models.metadata.ModelMetadata`) —
+  canonical model information that does not change between deployments:
+  the HuggingFace repository path, capability flags, minimum GPU memory
+  requirements, and model family metadata.
+
+A :class:`ResolvedDeployment` combines both into a single typed object
+returned by :meth:`DeploymentResolver.resolve`.
+"""
 
 from __future__ import annotations
 
-from typing import Any
+from dataclasses import dataclass
+from types import MappingProxyType
+from typing import Any, Mapping
 
 from lib.models import MODEL_REGISTRY
 from lib.models.metadata import ModelMetadata
@@ -11,39 +29,74 @@ from .loader import load_models
 from .model import DeploymentModel
 
 
+@dataclass(frozen=True, slots=True)
+class ResolvedDeployment:
+    """A fully resolved deployment model.
+
+    Combines the deployment-specific configuration with the canonical
+    platform model metadata.
+    """
+
+    deployment: DeploymentModel
+    metadata: ModelMetadata
+
+
 class DeploymentResolver:
-    """Resolves deployment aliases into platform model metadata."""
+    """Resolves deployment aliases into platform model metadata.
+
+    Deployment models are loaded once during construction and cached for
+    constant-time lookups thereafter.
+    """
 
     def __init__(self, config: dict[str, Any]) -> None:
-        self._models = load_models(config)
+        self._models: Mapping[str, DeploymentModel] = MappingProxyType(
+            load_models(config)
+        )
 
-    def resolve(self, alias: str) -> tuple[DeploymentModel, ModelMetadata]:
+    def resolve(self, alias: str) -> ResolvedDeployment:
         """Resolve a deployment alias."""
 
         try:
             deployment = self._models[alias]
         except KeyError as exc:
             raise KeyError(
-                f"Unknown deployment model '{alias}'."
+                f"Unknown deployment alias '{alias}'."
             ) from exc
 
         metadata = MODEL_REGISTRY.get(deployment.source)
 
         if metadata is None:
             raise ValueError(
-                f"Unknown model source '{deployment.source}'."
+                f"Unknown model source '{deployment.source}' "
+                f"for alias '{alias}'."
             )
 
-        return deployment, metadata
+        return ResolvedDeployment(
+            deployment=deployment,
+            metadata=metadata,
+        )
 
-    def list_models(self) -> dict[str, DeploymentModel]:
-        """Return configured deployment models."""
+    def default(self) -> ResolvedDeployment:
+        """Return the default deployment.
+
+        For now, the default is simply the first deployment declared in
+        the configuration. This can later evolve into an explicit
+        configuration option.
+        """
+
+        try:
+            alias = next(iter(self._models))
+        except StopIteration as exc:
+            raise ValueError(
+                "No deployment models are configured."
+            ) from exc
+
+        return self.resolve(alias)
+
+    def aliases(self) -> tuple[str, ...]:
+        """Return configured deployment aliases."""
+        return tuple(self._models.keys())
+
+    def deployments(self) -> dict[str, DeploymentModel]:
+        """Return a snapshot of configured deployment models."""
         return dict(self._models)
-
-    def aliases(self) -> list[str]:
-        """Return deployment aliases."""
-        return list(self._models.keys())
-
-    def exists(self, alias: str) -> bool:
-        """Return whether a deployment alias exists."""
-        return alias in self._models
