@@ -25,13 +25,15 @@ from dataclasses import dataclass
 
 from fastapi import FastAPI
 
+from lib.gateway.logging import LoggingMiddleware
 from lib.gateway.middleware import (
     AuthenticationMiddleware,
     RequestIDMiddleware,
 )
 from lib.gateway.proxy import RuntimeProxy
 from lib.gateway.routes import router
-from lib.gateway.logging import LoggingMiddleware
+from lib.gateway.service import GatewayService
+
 
 @dataclass(frozen=True)
 class GatewaySettings:
@@ -44,6 +46,7 @@ class GatewaySettings:
 
 def _load_settings() -> GatewaySettings:
     runtime_url = os.environ["GATEWAY_RUNTIME_URL"]
+
     # Derive a human-readable runtime name from the URL host when not set.
     # "http://vllm:8000/v1" → "vllm"
     default_runtime = runtime_url.split("//")[-1].split(":")[0].split("/")[0]
@@ -59,19 +62,20 @@ def _load_settings() -> GatewaySettings:
 
 
 def create_app() -> FastAPI:
-    """Create and configure the FastAPI gateway application.
-
-    Returns:
-        A fully configured :class:`FastAPI` instance.
-    """
+    """Create and configure the FastAPI gateway application."""
     settings = _load_settings()
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         proxy = RuntimeProxy(settings.runtime_url)
+        gateway = GatewayService(proxy)
+
         app.state.settings = settings
         app.state.proxy = proxy
+        app.state.gateway = gateway
+
         yield
+
         await proxy.close()
 
     app = FastAPI(
@@ -80,8 +84,11 @@ def create_app() -> FastAPI:
         version="0.1.0",
         lifespan=lifespan,
     )
+
     app.add_middleware(RequestIDMiddleware)
     app.add_middleware(LoggingMiddleware)
     app.add_middleware(AuthenticationMiddleware)
+
     app.include_router(router)
+
     return app

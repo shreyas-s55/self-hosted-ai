@@ -58,7 +58,7 @@ services:
       GATEWAY_RUNTIME: vllm
       GATEWAY_MODELS: chat
       GATEWAY_AUTH_ENABLED: 'true'
-      GATEWAY_API_KEY: sk_selfai_jOXl2Cx1rt3EjofhndRMBJBulr7sitkduY1AcL1v39E
+      GATEWAY_API_KEY: sk_selfai_M_t6-pJEerrsDnkCG5Ee6EJxNLhjHD198RXpZO8zK8Y
     expose:
     - '9000'
     healthcheck:
@@ -85,7 +85,7 @@ services:
     environment:
       TZ: UTC
       OPENAI_API_BASE_URL: http://gateway:9000/v1
-      OPENAI_API_KEY: sk_selfai_jOXl2Cx1rt3EjofhndRMBJBulr7sitkduY1AcL1v39E
+      OPENAI_API_KEY: sk_selfai_M_t6-pJEerrsDnkCG5Ee6EJxNLhjHD198RXpZO8zK8Y
     volumes:
     - ./data/open-webui:/app/backend/data
     networks:
