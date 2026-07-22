@@ -1,5 +1,6 @@
 """AI Gateway service definition."""
 
+import json
 from typing import Any
 
 from lib.deployment import DeploymentResolver
@@ -33,7 +34,20 @@ class GatewayService(BaseService):
         host_port = config.get("gateway", {}).get("port", _CONTAINER_PORT)
 
         resolver = DeploymentResolver(config)
+
         gateway_models = ",".join(resolver.aliases())
+
+        # Export deployment metadata so the gateway can resolve model aliases
+        # at runtime without requiring config.yaml.
+        gateway_deployments: dict[str, dict[str, str]] = {}
+
+        for alias in resolver.aliases():
+            deployment = resolver.resolve(alias)
+
+            gateway_deployments[alias] = {
+                "repository": deployment.metadata.huggingface_repo,
+                "runtime": engine,
+            }
 
         healthcheck_script = (
             "import urllib.request; "
@@ -56,6 +70,7 @@ class GatewayService(BaseService):
                 "GATEWAY_RUNTIME_URL": f"http://{engine}:{port}/v1",
                 "GATEWAY_RUNTIME": engine,
                 "GATEWAY_MODELS": gateway_models,
+                "GATEWAY_DEPLOYMENTS": json.dumps(gateway_deployments),
 
                 # Authentication
                 "GATEWAY_AUTH_ENABLED": str(
@@ -73,4 +88,3 @@ class GatewayService(BaseService):
             },
             "networks": ["ai-network"],
         }
-

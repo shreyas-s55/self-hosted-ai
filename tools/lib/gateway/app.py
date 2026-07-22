@@ -33,6 +33,7 @@ from lib.gateway.middleware import (
 from lib.gateway.proxy import RuntimeProxy
 from lib.gateway.routes import router
 from lib.gateway.service import GatewayService
+from lib.gateway.deployment import GatewayDeploymentRegistry
 
 
 @dataclass(frozen=True)
@@ -68,7 +69,13 @@ def create_app() -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         proxy = RuntimeProxy(settings.runtime_url)
-        gateway = GatewayService(proxy)
+
+        deployments = GatewayDeploymentRegistry.from_environment()
+
+        gateway = GatewayService(
+            proxy=proxy,
+            deployments=deployments,
+        )
 
         app.state.settings = settings
         app.state.proxy = proxy

@@ -57,8 +57,10 @@ services:
       GATEWAY_RUNTIME_URL: http://vllm:8000/v1
       GATEWAY_RUNTIME: vllm
       GATEWAY_MODELS: chat
+      GATEWAY_DEPLOYMENTS: '{"chat": {"repository": "Qwen/Qwen2.5-7B-Instruct", "runtime":
+        "vllm"}}'
       GATEWAY_AUTH_ENABLED: 'true'
-      GATEWAY_API_KEY: sk_selfai_M_t6-pJEerrsDnkCG5Ee6EJxNLhjHD198RXpZO8zK8Y
+      GATEWAY_API_KEY: sk_selfai_ebZrahUadmVPTVC2_s1YscFvOiJaze2iJcT9a5lQgsk
     expose:
     - '9000'
     healthcheck:
@@ -85,7 +87,7 @@ services:
     environment:
       TZ: UTC
       OPENAI_API_BASE_URL: http://gateway:9000/v1
-      OPENAI_API_KEY: sk_selfai_M_t6-pJEerrsDnkCG5Ee6EJxNLhjHD198RXpZO8zK8Y
+      OPENAI_API_KEY: sk_selfai_ebZrahUadmVPTVC2_s1YscFvOiJaze2iJcT9a5lQgsk
     volumes:
     - ./data/open-webui:/app/backend/data
     networks:

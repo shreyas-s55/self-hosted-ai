@@ -27,7 +27,7 @@ from lib.models.metadata import ModelMetadata
 
 from .loader import load_models
 from .model import DeploymentModel
-
+from lib.application import DeploymentProvider
 
 @dataclass(frozen=True, slots=True)
 class ResolvedDeployment:
@@ -41,7 +41,7 @@ class ResolvedDeployment:
     metadata: ModelMetadata
 
 
-class DeploymentResolver:
+class DeploymentResolver(DeploymentProvider):
     """Resolves deployment aliases into platform model metadata.
 
     Deployment models are loaded once during construction and cached for

@@ -12,9 +12,15 @@ async def parse_chat_completion(
 
     body = await request.json()
 
+    extra = dict(body)
+
+    extra.pop("model", None)
+    extra.pop("messages", None)
+    extra.pop("stream", None)
+
     return ChatCompletionRequest(
         model=body["model"],
         messages=body["messages"],
         stream=body.get("stream", False),
-        body=body,
+        extra=extra,
     )
