@@ -4,8 +4,8 @@ The service name in compose is the engine name (e.g. ``"vllm"``),
 derived at build time from ``config["runtime"]["engine"]``.
 
 All runtime-specific command generation is delegated to the
-:class:`RuntimeAdapter` — this service only assembles the compose
-service dict around the adapter's output.
+:class:`RuntimeAdapter`. This service only assembles the compose
+service definition around the adapter output.
 """
 
 from typing import Any
@@ -13,11 +13,6 @@ from typing import Any
 from lib.deployment import DeploymentResolver
 from lib.runtime import get_runtime_adapter
 from lib.services.base import BaseService
-
-# Primary deployment alias used for the runtime service.
-# A single runtime instance serves the first configured deployment model.
-# This is intentionally hardcoded until multi-instance routing is supported.
-_PRIMARY_ALIAS = "chat"
 
 
 class RuntimeService(BaseService):
@@ -38,10 +33,16 @@ class RuntimeService(BaseService):
         port = runtime["port"]
 
         resolver = DeploymentResolver(config)
-        deployment, metadata = resolver.resolve(_PRIMARY_ALIAS)
+        resolved = resolver.default()
 
         adapter = get_runtime_adapter(runtime["engine"])
-        command = adapter.build_command(config, metadata.huggingface_repo, deployment.parameters)
+
+        command = adapter.build_command(
+            port=port,
+            huggingface_repo=resolved.metadata.huggingface_repo,
+            parameters=resolved.deployment.parameters,
+            features=config.get("features", {}),
+        )
 
         healthcheck_script = (
             "import urllib.request; "

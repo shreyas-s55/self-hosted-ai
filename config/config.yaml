@@ -18,13 +18,19 @@ runtime:
   engine: vllm
   port: 8000
 
-model:
-  name: Qwen/Qwen2.5-7B-Instruct
-  dtype: auto
-  gpu_memory_utilization: 0.90
-  max_model_len: 8192
+models:
+  chat:
+    source: qwen-chat
+    parameters:
+      dtype: auto
+      gpu_memory_utilization: 0.90
+      max_model_len: 8192
+
+storage:
   download_dir: ./data/models
-  hf_token: ""
+
+huggingface:
+  token: ""
 
 features:
   tool_calling:
