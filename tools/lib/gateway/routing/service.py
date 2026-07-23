@@ -10,6 +10,7 @@ from lib.gateway.deployment import (
     GatewayDeployment,
     GatewayDeploymentRegistry,
 )
+from lib.gateway.routing.rules import classify
 from lib.openai.chat.models import ChatCompletionRequest
 
 
@@ -28,6 +29,15 @@ class RoutingService:
         """
 
         if request.model == "auto":
-            return self._deployments.default()
+            candidate = classify(request.messages)
+
+            if candidate == "chat":
+                return self._deployments.default()
+
+            try:
+                return self._deployments.resolve(candidate)
+            except ValueError:
+                # Preserve backward compatibility for single-deployment mode.
+                return self._deployments.default()
 
         return self._deployments.resolve(request.model)
