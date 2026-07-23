@@ -29,28 +29,28 @@ models:
 deployments:
   chat:
     runtime: vllm
-    repository: Qwen/Qwen2.5-7B-Instruct
+    repository: Qwen/Qwen2.5-1.5B-Instruct
     default: true
     parameters:
       dtype: auto
-      gpu_memory_utilization: 0.90
-      max_model_len: 8192
+      gpu_memory_utilization: 0.28
+      max_model_len: 4096
 
   coder:
     runtime: vllm
-    repository: Qwen/Qwen2.5-Coder-7B-Instruct
+    repository: Qwen/Qwen2.5-Coder-1.5B-Instruct
     parameters:
       dtype: auto
-      gpu_memory_utilization: 0.90
-      max_model_len: 8192
+      gpu_memory_utilization: 0.28
+      max_model_len: 4096
 
   reasoning:
     runtime: vllm
-    repository: deepseek-ai/DeepSeek-R1-Distill-Qwen-7B
+    repository: deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B
     parameters:
       dtype: auto
-      gpu_memory_utilization: 0.90
-      max_model_len: 8192
+      gpu_memory_utilization: 0.28
+      max_model_len: 4096
 
 storage:
   download_dir: ./data/models
