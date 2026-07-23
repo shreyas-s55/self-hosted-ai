@@ -127,6 +127,11 @@ def _validate_features(
         for alias in resolver.aliases()
     ]
 
+    # Feature capability validation only applies to the default deployment.
+    # Non-default deployments in multi-model configs may support different
+    # capability subsets; the runtime service filters feature flags per model.
+    default_deployment = [resolver.default()]
+
     # ------------------------------------------------------------------ #
     # Tool Calling
     # ------------------------------------------------------------------ #
@@ -151,7 +156,7 @@ def _validate_features(
                 )
             )
 
-        for resolved in deployments:
+        for resolved in default_deployment:
             # Skip catalog-based capability checks for external repos not
             # registered in the model catalog. The user is responsible for
             # ensuring feature compatibility when using arbitrary HF repos.
@@ -181,7 +186,7 @@ def _validate_features(
                 )
             )
 
-        for resolved in deployments:
+        for resolved in default_deployment:
             if MODEL_REGISTRY.get(resolved.deployment.source) is None:
                 continue
             if not resolved.metadata.supports_vision:
@@ -200,7 +205,7 @@ def _validate_features(
 
     if reasoning.get("enabled", False):
 
-        for resolved in deployments:
+        for resolved in default_deployment:
             if MODEL_REGISTRY.get(resolved.deployment.source) is None:
                 continue
             if not resolved.metadata.supports_reasoning:

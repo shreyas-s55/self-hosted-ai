@@ -11,6 +11,7 @@ service definition around the adapter output.
 from typing import Any
 
 from lib.deployment import DeploymentResolver, is_multi_mode
+from lib.models.metadata import ModelMetadata
 from lib.runtime import get_runtime_adapter
 from lib.services.base import BaseService
 
@@ -74,6 +75,10 @@ class RuntimeService(BaseService):
 
         service_name = runtime_engine if not is_multi_mode(config) else f"runtime-{alias}"
 
+        # Only pass feature flags that this specific model supports.
+        # Each deployment is autonomous — capabilities are per-model.
+        features = _filter_features(config.get("features", {}), resolved.metadata)
+
         return self._build_runtime_service(
             config=config,
             service_name=service_name,
@@ -83,6 +88,7 @@ class RuntimeService(BaseService):
             port=port,
             source=resolved.metadata.huggingface_repo,
             parameters=resolved.deployment.parameters,
+            features=features,
         )
 
     def _build_runtime_service(
@@ -96,6 +102,7 @@ class RuntimeService(BaseService):
         port: int,
         source: str,
         parameters: dict[str, Any],
+        features: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         adapter = get_runtime_adapter(runtime_engine)
 
@@ -103,7 +110,7 @@ class RuntimeService(BaseService):
             port=port,
             huggingface_repo=source,
             parameters=parameters,
-            features=config.get("features", {}),
+            features=features if features is not None else config.get("features", {}),
         )
 
         healthcheck_script = (
@@ -135,3 +142,25 @@ class RuntimeService(BaseService):
             },
             "networks": ["ai-network"],
         }
+
+
+def _filter_features(
+    features: dict[str, Any],
+    metadata: ModelMetadata,
+) -> dict[str, Any]:
+    """Return a shallow copy of features with flags disabled for unsupported capabilities.
+
+    Each deployment is responsible only for what its model supports.
+    Callers set global feature flags; this function enforces per-model boundaries.
+    """
+    filtered = dict(features)
+
+    tool_calling = filtered.get("tool_calling", {})
+    if tool_calling.get("enabled") and not metadata.supports_tool_calling:
+        filtered["tool_calling"] = {**tool_calling, "enabled": False}
+
+    vision = filtered.get("vision", {})
+    if vision.get("enabled") and not metadata.supports_vision:
+        filtered["vision"] = {**vision, "enabled": False}
+
+    return filtered

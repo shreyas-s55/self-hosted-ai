@@ -38,7 +38,7 @@ deployments:
 
   coder:
     runtime: vllm
-    repository: deepseek-ai/DeepSeek-Coder
+    repository: Qwen/Qwen2.5-Coder-7B-Instruct
     parameters:
       dtype: auto
       gpu_memory_utilization: 0.90
@@ -46,7 +46,7 @@ deployments:
 
   reasoning:
     runtime: vllm
-    repository: Qwen/QwQ
+    repository: deepseek-ai/DeepSeek-R1-Distill-Qwen-7B
     parameters:
       dtype: auto
       gpu_memory_utilization: 0.90
