@@ -87,32 +87,33 @@ Status: ✅
 
 ---
 
-# Current Milestone
-
 ## Milestone 6 — Gateway Foundation
 
-Goals:
-
 - Request IDs
-- Structured logging
+- Structured JSON logging
 - Startup banner
 - System information endpoint
 - Basic metrics
 
-Status: 🚧
+Status: ✅
 
 ---
-
-# Planned
 
 ## Milestone 7 — Intelligent Routing
 
-- Automatic model routing
-- Capability-based routing
-- Runtime selection
-- Multiple runtime support
+- `model="auto"` request routing
+- Rule-based keyword classifier (coding / reasoning / chat)
+- Deployment-driven gateway forwarding
+- Multi-deployment configuration format
+- Per-deployment health reporting
+- Single-GPU multi-model deployment (enforce_eager + sequential startup)
+- Multi-GPU deployment with per-container GPU pinning (`--pin-gpus`)
+
+Status: ✅
 
 ---
+
+# Current Milestone
 
 ## Milestone 8 — Runtime Expansion
 

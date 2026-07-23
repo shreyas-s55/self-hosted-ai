@@ -17,6 +17,31 @@ config/config.yaml               ← Single source of truth
                           └──→ docker compose up
 ```
 
+### Deployment Modes
+
+| Mode | Flag | Description |
+|------|------|-------------|
+| `single` | `--profile single` | One runtime serving the default model |
+| `multi` | `--profile multi` | One runtime per deployment, all sharing the GPU |
+| `multi` + GPU pinning | `--profile multi --pin-gpus` | Each runtime pinned to a dedicated GPU (multi-GPU instances) |
+
+### Intelligent Routing
+
+The gateway routes requests automatically when `model="auto"`:
+
+```
+Client  →  Gateway  →  RoutingService  →  Classifier  →  Deployment
+                                              │
+                                    ┌─────────┼──────────┐
+                                  coder   reasoning    chat (default)
+```
+
+- **coder** — coding keywords detected (Python, FastAPI, SQL, Docker, Terraform, …)
+- **reasoning** — logic/math keywords detected (prove, theorem, equation, …)
+- **chat** — fallback default
+
+Explicit model names (`chat`, `coder`, `reasoning`) bypass the classifier and route directly.
+
 ### Runtime Adapter
 
 The platform uses a **runtime adapter** pattern to support multiple inference
@@ -97,43 +122,113 @@ docker run --rm --gpus all nvidia/cuda:13.0.1-base-ubuntu24.04 nvidia-smi
 
 ### 3. Deploy the Platform
 
+**Single model** (default — one model, one GPU):
+
 ```bash
 sudo /opt/self-hosted-ai/deploy/scripts/deploy.sh
 ```
 
+**Multi model** (three models sharing one GPU, e.g. g6.xlarge):
+
 ```bash
-Multi model
+cd /opt/self-hosted-ai
+git pull
 python3 tools/generate.py --profile multi
-docker compose -f deploy/compose.generated.yaml up -d --build
-docker ps
-or 
 sudo docker compose -f deploy/compose.generated.yaml down
 sudo docker compose -f deploy/compose.generated.yaml up -d --build
 ```
 
+**Multi model with dedicated GPUs** (one GPU per model, e.g. g6.12xlarge):
+
+```bash
+cd /opt/self-hosted-ai
+git pull
+python3 tools/generate.py --profile multi --pin-gpus
+sudo docker compose -f deploy/compose.generated.yaml down
+sudo docker compose -f deploy/compose.generated.yaml up -d --build
+```
 
 ### 4. Verify
 
+Get your API key:
+
 ```bash
-docker exec open-webui curl http://vllm:8000/v1/models
+grep GATEWAY_API_KEY deploy/compose.generated.yaml
 ```
 
-
-
-docker compose -f deploy/compose.generated.yaml up -d --build
-
+Check all deployments are healthy:
 
 ```bash
-get token
+curl -H "Authorization: Bearer $TOKEN" http://localhost:9000/health
+```
 
-grep GATEWAY_API_KEY deploy/compose.generated.yaml
+List available models:
 
-curl -H "Authorization: Bearer $token" http://localhost:9000/v1/models
+```bash
+curl -H "Authorization: Bearer $TOKEN" http://localhost:9000/v1/models
+```
+
+Test automatic routing:
+
+```bash
+# Routes to coder deployment
+curl -H "Authorization: Bearer $TOKEN" http://localhost:9000/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{"model":"auto","messages":[{"role":"user","content":"Write a FastAPI endpoint that lists S3 buckets"}]}'
+
+# Routes to reasoning deployment
+curl -H "Authorization: Bearer $TOKEN" http://localhost:9000/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{"model":"auto","messages":[{"role":"user","content":"Prove that the square root of 2 is irrational"}]}'
+
+# Explicit routing
+curl -H "Authorization: Bearer $TOKEN" http://localhost:9000/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{"model":"coder","messages":[{"role":"user","content":"Hello"}]}'
+```
+
+Watch routing decisions in gateway logs:
+
+```bash
+sudo docker logs gateway --follow | python3 -m json.tool
 ```
 
 ## Configuration
 
 All configuration is managed in `config/config.yaml`.
+
+### Deployments
+
+```yaml
+deployments:
+  chat:
+    runtime: vllm
+    repository: Qwen/Qwen2.5-1.5B-Instruct
+    default: true
+    parameters:
+      dtype: auto
+      enforce_eager: true
+      gpu_memory_utilization: 0.27
+      max_model_len: 8192
+
+  coder:
+    runtime: vllm
+    repository: Qwen/Qwen2.5-Coder-1.5B-Instruct
+    parameters:
+      dtype: auto
+      enforce_eager: true
+      gpu_memory_utilization: 0.27
+      max_model_len: 8192
+
+  reasoning:
+    runtime: vllm
+    repository: deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B
+    parameters:
+      dtype: auto
+      enforce_eager: true
+      gpu_memory_utilization: 0.27
+      max_model_len: 8192
+```
 
 ### Tool Calling
 
