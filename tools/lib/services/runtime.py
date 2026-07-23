@@ -61,9 +61,20 @@ class RuntimeService(BaseService):
         builds: list[tuple[str, dict[str, Any]]] = []
 
         pin_gpus = config.get("deployment", {}).get("pin_gpus", False)
+        previous_service: str | None = None
         for gpu_index, alias in enumerate(resolver.aliases()):
             effective_index = gpu_index if pin_gpus else None
-            builds.append((f"runtime-{alias}", self._build_for_alias(config, alias, gpu_index=effective_index)))
+            service = self._build_for_alias(config, alias, gpu_index=effective_index)
+            service_name = f"runtime-{alias}"
+            # Serialize startup: wait for the previous runtime to be healthy before
+            # starting the next one.  Without this, all containers profile the GPU
+            # simultaneously and their combined peak allocation exceeds VRAM.
+            if previous_service is not None:
+                service["depends_on"] = {
+                    previous_service: {"condition": "service_healthy"},
+                }
+            builds.append((service_name, service))
+            previous_service = service_name
 
         return builds
 
