@@ -60,12 +60,12 @@ class RuntimeService(BaseService):
 
         builds: list[tuple[str, dict[str, Any]]] = []
 
-        for alias in resolver.aliases():
-            builds.append((f"runtime-{alias}", self._build_for_alias(config, alias)))
+        for gpu_index, alias in enumerate(resolver.aliases()):
+            builds.append((f"runtime-{alias}", self._build_for_alias(config, alias, gpu_index=gpu_index)))
 
         return builds
 
-    def _build_for_alias(self, config: dict[str, Any], alias: str) -> dict[str, Any]:
+    def _build_for_alias(self, config: dict[str, Any], alias: str, gpu_index: int | None = None) -> dict[str, Any]:
         runtime = config["runtime"]
         resolver = DeploymentResolver(config)
         resolved = resolver.resolve(alias)
@@ -89,6 +89,7 @@ class RuntimeService(BaseService):
             source=resolved.metadata.huggingface_repo,
             parameters=resolved.deployment.parameters,
             features=features,
+            gpu_index=gpu_index,
         )
 
     def _build_runtime_service(
@@ -103,6 +104,7 @@ class RuntimeService(BaseService):
         source: str,
         parameters: dict[str, Any],
         features: dict[str, Any] | None = None,
+        gpu_index: int | None = None,
     ) -> dict[str, Any]:
         adapter = get_runtime_adapter(runtime_engine)
 
@@ -118,6 +120,15 @@ class RuntimeService(BaseService):
             f"urllib.request.urlopen('http://localhost:{port}{adapter.health_endpoint}')"
         )
 
+        environment: dict[str, str] = {
+            "HUGGING_FACE_HUB_TOKEN": "${HF_TOKEN}",
+        }
+
+        # In multi-GPU deployments pin each container to a dedicated GPU device
+        # so that separate vLLM processes do not compete for the same VRAM.
+        if gpu_index is not None:
+            environment["CUDA_VISIBLE_DEVICES"] = str(gpu_index)
+
         return {
             "image": adapter.image,
             "container_name": container_name,
@@ -126,9 +137,7 @@ class RuntimeService(BaseService):
             "runtime": "nvidia",
             "ipc": "host",
             "command": command,
-            "environment": {
-                "HUGGING_FACE_HUB_TOKEN": "${HF_TOKEN}",
-            },
+            "environment": environment,
             "volumes": [
                 f"{config['storage']['download_dir']}:/root/.cache/huggingface",
             ],
