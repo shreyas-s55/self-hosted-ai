@@ -45,3 +45,5 @@ class DeploymentModel:
     alias: str
     source: str
     parameters: dict[str, Any] = field(default_factory=dict)
+    runtime: str | None = None
+    default: bool = False

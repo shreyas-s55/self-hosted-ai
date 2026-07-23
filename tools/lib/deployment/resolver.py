@@ -66,9 +66,21 @@ class DeploymentResolver(DeploymentProvider):
         metadata = MODEL_REGISTRY.get(deployment.source)
 
         if metadata is None:
-            raise ValueError(
-                f"Unknown model source '{deployment.source}' "
-                f"for alias '{alias}'."
+            metadata = ModelMetadata(
+                name=deployment.source,
+                family="custom",
+                huggingface_repo=deployment.source,
+                runtime=deployment.runtime or "unknown",
+                context_length=0,
+                min_gpu_memory_gb=0.0,
+                supports_chat=True,
+                supports_tool_calling=False,
+                supports_structured_output=False,
+                supports_json_mode=False,
+                supports_embeddings=False,
+                supports_reasoning=False,
+                supports_vision=False,
+                default_parameters={},
             )
 
         return ResolvedDeployment(
@@ -83,6 +95,10 @@ class DeploymentResolver(DeploymentProvider):
         the configuration. This can later evolve into an explicit
         configuration option.
         """
+
+        for alias, deployment in self._models.items():
+            if deployment.default:
+                return self.resolve(alias)
 
         try:
             alias = next(iter(self._models))
