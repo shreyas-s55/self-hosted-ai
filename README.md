@@ -101,6 +101,14 @@ docker run --rm --gpus all nvidia/cuda:13.0.1-base-ubuntu24.04 nvidia-smi
 sudo /opt/self-hosted-ai/deploy/scripts/deploy.sh
 ```
 
+```bash
+Multi model
+python3 tools/generate.py --profile multi
+docker compose -f deploy/compose.generated.yaml up -d --build
+docker ps
+```
+
+
 ### 4. Verify
 
 ```bash
