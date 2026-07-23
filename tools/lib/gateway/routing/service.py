@@ -22,7 +22,12 @@ class RoutingService:
     def route(self, request: ChatCompletionRequest) -> GatewayDeployment:
         """Route a request to a deployment.
 
-        Phase 1 behavior: preserve current alias resolution exactly.
+        Phase 2 behavior:
+        - ``model='auto'`` routes to the configured default deployment.
+        - all other model aliases preserve exact resolution behavior.
         """
+
+        if request.model == "auto":
+            return self._deployments.default()
 
         return self._deployments.resolve(request.model)
