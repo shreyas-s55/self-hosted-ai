@@ -34,7 +34,7 @@ deployments:
     parameters:
       dtype: auto
       enforce_eager: true
-      gpu_memory_utilization: 0.30
+      gpu_memory_utilization: 0.27
       max_model_len: 8192
 
   coder:
@@ -43,7 +43,7 @@ deployments:
     parameters:
       dtype: auto
       enforce_eager: true
-      gpu_memory_utilization: 0.30
+      gpu_memory_utilization: 0.27
       max_model_len: 8192
 
   reasoning:
@@ -52,7 +52,7 @@ deployments:
     parameters:
       dtype: auto
       enforce_eager: true
-      gpu_memory_utilization: 0.30
+      gpu_memory_utilization: 0.27
       max_model_len: 8192
 
 storage:

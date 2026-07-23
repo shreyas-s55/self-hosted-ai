@@ -135,6 +135,11 @@ class RuntimeService(BaseService):
 
         environment: dict[str, str] = {
             "HUGGING_FACE_HUB_TOKEN": "${HF_TOKEN}",
+            # Allow PyTorch's allocator to split/merge reserved segments so that
+            # fragmented cached memory can satisfy new allocations.  Without this
+            # the third container fails with "Tried to allocate 150 MiB" even
+            # though 112 MiB is reserved-but-unallocated.
+            "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True",
         }
 
         # In multi-GPU deployments pin each container to a dedicated GPU device
