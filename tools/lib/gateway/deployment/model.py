@@ -12,3 +12,4 @@ class GatewayDeployment:
     alias: str
     repository: str
     runtime: str
+    runtime_url: str

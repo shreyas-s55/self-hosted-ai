@@ -33,19 +33,21 @@ class RuntimeProxy:
         path: str,
         body: bytes,
         stream: bool,
+        runtime_url: str | None = None,
     ) -> Response | StreamingResponse:
         """Forward a request to the runtime."""
 
         headers = _safe_headers(request.headers)
+        target_url = _build_target_url(runtime_url, path)
 
         if stream:
             return StreamingResponse(
-                self._stream(path, body, headers),
+                self._stream(target_url, body, headers),
                 media_type="text/event-stream",
             )
 
         upstream = await self._client.post(
-            path,
+            target_url,
             content=body,
             headers=headers,
         )
@@ -58,13 +60,13 @@ class RuntimeProxy:
 
     async def _stream(
         self,
-        path: str,
+        url: str,
         body: bytes,
         headers: dict[str, str],
     ) -> AsyncIterator[bytes]:
         async with self._client.stream(
             "POST",
-            path,
+            url,
             content=body,
             headers=headers,
         ) as upstream:
@@ -90,3 +92,9 @@ def _safe_headers(headers: httpx.Headers) -> dict[str, str]:
         for key, value in headers.items()
         if key.lower() not in excluded
     }
+
+
+def _build_target_url(runtime_url: str | None, path: str) -> str:
+    if runtime_url:
+        return f"{runtime_url.rstrip('/')}{path}"
+    return path

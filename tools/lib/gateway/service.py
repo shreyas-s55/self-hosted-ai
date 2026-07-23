@@ -54,4 +54,5 @@ class GatewayService:
             path="/chat/completions",
             body=payload,
             stream=transformed.stream,
+            runtime_url=deployment.runtime_url,
         )

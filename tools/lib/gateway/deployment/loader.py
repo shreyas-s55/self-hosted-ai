@@ -14,6 +14,7 @@ def load_deployments() -> dict[str, GatewayDeployment]:
     raw = os.environ.get("GATEWAY_DEPLOYMENTS", "{}")
 
     payload = json.loads(raw)
+    default_runtime_url = os.environ.get("GATEWAY_RUNTIME_URL", "")
 
     deployments: dict[str, GatewayDeployment] = {}
 
@@ -22,6 +23,7 @@ def load_deployments() -> dict[str, GatewayDeployment]:
             alias=alias,
             repository=metadata["repository"],
             runtime=metadata["runtime"],
+            runtime_url=metadata.get("runtime_url", default_runtime_url),
         )
 
     return deployments
