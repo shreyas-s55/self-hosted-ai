@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from lib.deployment import DeploymentResolver, deployment_mode
+from lib.models import MODEL_REGISTRY
 from lib.runtime import SUPPORTED_RUNTIMES, get_runtime_adapter
 
 
@@ -151,6 +152,11 @@ def _validate_features(
             )
 
         for resolved in deployments:
+            # Skip catalog-based capability checks for external repos not
+            # registered in the model catalog. The user is responsible for
+            # ensuring feature compatibility when using arbitrary HF repos.
+            if MODEL_REGISTRY.get(resolved.deployment.source) is None:
+                continue
             if not resolved.metadata.supports_tool_calling:
                 errors.append(
                     ValidationError(
@@ -176,6 +182,8 @@ def _validate_features(
             )
 
         for resolved in deployments:
+            if MODEL_REGISTRY.get(resolved.deployment.source) is None:
+                continue
             if not resolved.metadata.supports_vision:
                 errors.append(
                     ValidationError(
@@ -193,6 +201,8 @@ def _validate_features(
     if reasoning.get("enabled", False):
 
         for resolved in deployments:
+            if MODEL_REGISTRY.get(resolved.deployment.source) is None:
+                continue
             if not resolved.metadata.supports_reasoning:
                 errors.append(
                     ValidationError(

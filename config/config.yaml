@@ -26,6 +26,32 @@ models:
       gpu_memory_utilization: 0.90
       max_model_len: 8192
 
+deployments:
+  chat:
+    runtime: vllm
+    repository: Qwen/Qwen2.5-7B-Instruct
+    default: true
+    parameters:
+      dtype: auto
+      gpu_memory_utilization: 0.90
+      max_model_len: 8192
+
+  coder:
+    runtime: vllm
+    repository: deepseek-ai/DeepSeek-Coder
+    parameters:
+      dtype: auto
+      gpu_memory_utilization: 0.90
+      max_model_len: 8192
+
+  reasoning:
+    runtime: vllm
+    repository: Qwen/QwQ
+    parameters:
+      dtype: auto
+      gpu_memory_utilization: 0.90
+      max_model_len: 8192
+
 storage:
   download_dir: ./data/models
 

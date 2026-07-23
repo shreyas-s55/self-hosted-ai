@@ -100,10 +100,15 @@ def _load_deployments(
                 f"Configuration for deployment '{alias}' must be a mapping."
             )
 
-        source = dep_cfg.get("model") or dep_cfg.get("source")
+        source = (
+            dep_cfg.get("model")
+            or dep_cfg.get("source")
+            or dep_cfg.get("repository")
+        )
         if not source:
             raise ValueError(
-                f"Deployment '{alias}' is missing required field 'model' (or 'source')."
+                f"Deployment '{alias}' is missing required field "
+                "'model', 'source', or 'repository'."
             )
 
         parameters = dep_cfg.get("parameters", {})
