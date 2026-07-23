@@ -131,21 +131,13 @@ sudo /opt/self-hosted-ai/deploy/scripts/deploy.sh
 **Multi model** (three models sharing one GPU, e.g. g6.xlarge):
 
 ```bash
-cd /opt/self-hosted-ai
-git pull
-python3 tools/generate.py --profile multi
-sudo docker compose -f deploy/compose.generated.yaml down
-sudo docker compose -f deploy/compose.generated.yaml up -d --build
+sudo /opt/self-hosted-ai/deploy/scripts/deploy.sh multi
 ```
 
 **Multi model with dedicated GPUs** (one GPU per model, e.g. g6.12xlarge):
 
 ```bash
-cd /opt/self-hosted-ai
-git pull
-python3 tools/generate.py --profile multi --pin-gpus
-sudo docker compose -f deploy/compose.generated.yaml down
-sudo docker compose -f deploy/compose.generated.yaml up -d --build
+sudo /opt/self-hosted-ai/deploy/scripts/deploy.sh multi-dedicated-gpu
 ```
 
 ### 4. Verify
