@@ -15,6 +15,7 @@ from fastapi.responses import Response, StreamingResponse
 from lib.gateway.deployment import GatewayDeploymentRegistry
 from lib.gateway.proxy import RuntimeProxy
 from lib.openai.parser import parse_chat_completion
+from lib.gateway.transformers import ChatRequestTransformer
 
 
 class GatewayService:
@@ -27,6 +28,7 @@ class GatewayService:
     ) -> None:
         self._proxy = proxy
         self._deployments = deployments
+        self._transformer = ChatRequestTransformer()
 
     async def chat_completions(
         self,
@@ -41,7 +43,7 @@ class GatewayService:
         deployment = self._deployments.resolve(chat.model)
 
         # Transform the request to use the runtime model.
-        transformed = chat.with_model(deployment.repository)
+        transformed = self._transformer.transform(request=chat,deployment=deployment,)
 
         # Serialize back to JSON.
         payload = json.dumps(transformed.to_dict()).encode("utf-8")
