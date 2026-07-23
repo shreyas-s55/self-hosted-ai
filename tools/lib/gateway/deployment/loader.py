@@ -15,15 +15,22 @@ def load_deployments() -> dict[str, GatewayDeployment]:
 
     payload = json.loads(raw)
     default_runtime_url = os.environ.get("GATEWAY_RUNTIME_URL", "")
+    default_alias = os.environ.get("GATEWAY_DEFAULT_DEPLOYMENT", "")
 
     deployments: dict[str, GatewayDeployment] = {}
 
     for alias, metadata in payload.items():
+        is_default = (
+            alias == default_alias
+            if default_alias
+            else len(deployments) == 0
+        )
         deployments[alias] = GatewayDeployment(
             alias=alias,
             repository=metadata["repository"],
             runtime=metadata["runtime"],
             runtime_url=metadata.get("runtime_url", default_runtime_url),
+            default=is_default,
         )
 
     return deployments

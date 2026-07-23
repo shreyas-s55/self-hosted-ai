@@ -35,16 +35,23 @@ class GatewayService(BaseService):
 
         resolver = DeploymentResolver(config)
 
-        gateway_models = ",".join(resolver.aliases())
+        multi_mode = is_multi_mode(config)
+
+        # Single mode: only the default deployment is deployed and exposed.
+        # Multi mode: every deployment has its own runtime and is exposed.
+        if multi_mode:
+            aliases_to_expose = resolver.aliases()
+        else:
+            aliases_to_expose = (resolver.default().deployment.alias,)
+
+        gateway_models = ",".join(aliases_to_expose)
 
         # Export deployment metadata so the gateway can resolve model aliases
         # at runtime without requiring config.yaml.
         gateway_deployments: dict[str, dict[str, str]] = {}
         depends_on: dict[str, dict[str, str]] = {}
 
-        multi_mode = is_multi_mode(config)
-
-        for alias in resolver.aliases():
+        for alias in aliases_to_expose:
             deployment = resolver.resolve(alias)
             deployment_engine = deployment.deployment.runtime or engine
 

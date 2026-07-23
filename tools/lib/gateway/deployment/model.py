@@ -13,3 +13,4 @@ class GatewayDeployment:
     repository: str
     runtime: str
     runtime_url: str
+    default: bool = False

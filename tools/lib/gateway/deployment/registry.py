@@ -26,6 +26,10 @@ class GatewayDeploymentRegistry:
         return tuple(self._deployments.keys())
 
     def default(self) -> GatewayDeployment:
+        for d in self._deployments.values():
+            if d.default:
+                return d
+
         if not self._deployments:
             raise ValueError("No deployments configured.")
 
