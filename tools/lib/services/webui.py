@@ -2,6 +2,7 @@
 
 from typing import Any
 
+from lib.deployment import DeploymentResolver, is_multi_mode
 from lib.services.base import BaseService
 
 _GATEWAY_CONTAINER_PORT = 9000
@@ -36,8 +37,16 @@ class OpenWebUIService(BaseService):
         else:
             engine = config["runtime"]["engine"]
             port = config["runtime"]["port"]
-            api_base_url = f"http://{engine}:{port}/v1"
-            depends_on = {engine: {"condition": "service_healthy"}}
+
+            if is_multi_mode(config):
+                resolver = DeploymentResolver(config)
+                default_alias = resolver.default().deployment.alias
+                runtime_service = f"runtime-{default_alias}"
+            else:
+                runtime_service = engine
+
+            api_base_url = f"http://{runtime_service}:{port}/v1"
+            depends_on = {runtime_service: {"condition": "service_healthy"}}
 
         return {
             "image": "ghcr.io/open-webui/open-webui:main",

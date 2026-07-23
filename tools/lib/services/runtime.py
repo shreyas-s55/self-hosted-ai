@@ -10,7 +10,7 @@ service definition around the adapter output.
 
 from typing import Any
 
-from lib.deployment import DeploymentResolver
+from lib.deployment import DeploymentResolver, is_multi_mode
 from lib.runtime import get_runtime_adapter
 from lib.services.base import BaseService
 
@@ -29,18 +29,80 @@ class RuntimeService(BaseService):
         return bool(config.get("runtime", {}).get("engine"))
 
     def build(self, config: dict[str, Any]) -> dict[str, Any]:
-        runtime = config["runtime"]
-        port = runtime["port"]
+        # In multi mode, RuntimeService is expanded by iter_builds.
+        if is_multi_mode(config):
+            return self._build_for_alias(config, DeploymentResolver(config).default().deployment.alias)
 
+        runtime = config["runtime"]
+        engine = runtime["engine"]
         resolver = DeploymentResolver(config)
         resolved = resolver.default()
 
-        adapter = get_runtime_adapter(runtime["engine"])
+        return self._build_runtime_service(
+            config=config,
+            service_name=engine,
+            container_name=engine,
+            hostname=engine,
+            runtime_engine=engine,
+            port=runtime["port"],
+            source=resolved.metadata.huggingface_repo,
+            parameters=resolved.deployment.parameters,
+        )
+
+    def iter_builds(self, config: dict[str, Any]) -> list[tuple[str, dict[str, Any]]]:
+        """Return one or many compose runtime service definitions."""
+
+        if not is_multi_mode(config):
+            return [(self.service_name(config), self.build(config))]
+
+        resolver = DeploymentResolver(config)
+
+        builds: list[tuple[str, dict[str, Any]]] = []
+
+        for alias in resolver.aliases():
+            builds.append((f"runtime-{alias}", self._build_for_alias(config, alias)))
+
+        return builds
+
+    def _build_for_alias(self, config: dict[str, Any], alias: str) -> dict[str, Any]:
+        runtime = config["runtime"]
+        resolver = DeploymentResolver(config)
+        resolved = resolver.resolve(alias)
+
+        runtime_engine = resolved.deployment.runtime or runtime["engine"]
+        port = runtime["port"]
+
+        service_name = runtime_engine if not is_multi_mode(config) else f"runtime-{alias}"
+
+        return self._build_runtime_service(
+            config=config,
+            service_name=service_name,
+            container_name=service_name,
+            hostname=service_name,
+            runtime_engine=runtime_engine,
+            port=port,
+            source=resolved.metadata.huggingface_repo,
+            parameters=resolved.deployment.parameters,
+        )
+
+    def _build_runtime_service(
+        self,
+        *,
+        config: dict[str, Any],
+        service_name: str,
+        container_name: str,
+        hostname: str,
+        runtime_engine: str,
+        port: int,
+        source: str,
+        parameters: dict[str, Any],
+    ) -> dict[str, Any]:
+        adapter = get_runtime_adapter(runtime_engine)
 
         command = adapter.build_command(
             port=port,
-            huggingface_repo=resolved.metadata.huggingface_repo,
-            parameters=resolved.deployment.parameters,
+            huggingface_repo=source,
+            parameters=parameters,
             features=config.get("features", {}),
         )
 
@@ -51,7 +113,8 @@ class RuntimeService(BaseService):
 
         return {
             "image": adapter.image,
-            "container_name": runtime["engine"],
+            "container_name": container_name,
+            "hostname": hostname,
             "restart": "unless-stopped",
             "runtime": "nvidia",
             "ipc": "host",

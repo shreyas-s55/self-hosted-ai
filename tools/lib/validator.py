@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from typing import Any
 
-from lib.deployment import DeploymentResolver
+from lib.deployment import DeploymentResolver, deployment_mode
 from lib.runtime import SUPPORTED_RUNTIMES, get_runtime_adapter
 
 
@@ -23,6 +23,7 @@ def validate_config(config: dict[str, Any]) -> list[ValidationError]:
 
     errors: list[ValidationError] = []
 
+    errors.extend(_validate_deployment_mode(config))
     errors.extend(_validate_runtime(config))
 
     try:
@@ -82,6 +83,23 @@ def _validate_runtime(config: dict[str, Any]) -> list[ValidationError]:
             ValidationError(
                 "runtime.port",
                 f"Invalid port '{port}'. Must be between 1 and 65535.",
+            )
+        )
+
+    return errors
+
+
+def _validate_deployment_mode(config: dict[str, Any]) -> list[ValidationError]:
+    errors: list[ValidationError] = []
+
+    raw_mode = str(config.get("deployment", {}).get("mode", "single")).strip().lower()
+    normalized = deployment_mode(config)
+
+    if raw_mode and raw_mode != normalized:
+        errors.append(
+            ValidationError(
+                "deployment.mode",
+                "Unsupported mode. Supported: single, multi.",
             )
         )
 

@@ -3,7 +3,7 @@
 import json
 from typing import Any
 
-from lib.deployment import DeploymentResolver
+from lib.deployment import DeploymentResolver, is_multi_mode
 from lib.services.base import BaseService
 
 # Internal port the gateway container always listens on.
@@ -40,14 +40,29 @@ class GatewayService(BaseService):
         # Export deployment metadata so the gateway can resolve model aliases
         # at runtime without requiring config.yaml.
         gateway_deployments: dict[str, dict[str, str]] = {}
+        depends_on: dict[str, dict[str, str]] = {}
+
+        multi_mode = is_multi_mode(config)
 
         for alias in resolver.aliases():
             deployment = resolver.resolve(alias)
+            deployment_engine = deployment.deployment.runtime or engine
+
+            runtime_service = deployment_engine
+
+            if multi_mode:
+                runtime_service = f"runtime-{alias}"
 
             gateway_deployments[alias] = {
                 "repository": deployment.metadata.huggingface_repo,
-                "runtime": engine,
+                "runtime": deployment_engine,
+                "runtime_url": f"http://{runtime_service}:{port}/v1",
+                "runtime_service": runtime_service,
             }
+
+            depends_on[runtime_service] = {"condition": "service_healthy"}
+
+        default_deployment = resolver.default().deployment.alias
 
         healthcheck_script = (
             "import urllib.request; "
@@ -63,13 +78,12 @@ class GatewayService(BaseService):
             "container_name": "gateway",
             "restart": "unless-stopped",
             "ports": [f"{host_port}:{_CONTAINER_PORT}"],
-            "depends_on": {
-                engine: {"condition": "service_healthy"},
-            },
+            "depends_on": depends_on,
             "environment": {
-                "GATEWAY_RUNTIME_URL": f"http://{engine}:{port}/v1",
+                "GATEWAY_RUNTIME_URL": gateway_deployments[default_deployment]["runtime_url"],
                 "GATEWAY_RUNTIME": engine,
                 "GATEWAY_MODELS": gateway_models,
+                "GATEWAY_DEFAULT_DEPLOYMENT": default_deployment,
                 "GATEWAY_DEPLOYMENTS": json.dumps(gateway_deployments),
 
                 # Authentication

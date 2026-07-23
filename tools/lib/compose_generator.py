@@ -80,7 +80,11 @@ def generate_compose(config: dict[str, Any], output_path: Path) -> None:
     services: dict[str, Any] = {}
 
     for svc in SERVICE_REGISTRY.enabled_services(config):
-        services[svc.service_name(config)] = svc.build(config)
+        if hasattr(svc, "iter_builds"):
+            for service_name, definition in svc.iter_builds(config):
+                services[service_name] = definition
+        else:
+            services[svc.service_name(config)] = svc.build(config)
 
     compose: dict[str, Any] = {
         "services": services,
