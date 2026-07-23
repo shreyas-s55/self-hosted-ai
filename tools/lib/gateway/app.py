@@ -34,6 +34,7 @@ from lib.gateway.proxy import RuntimeProxy
 from lib.gateway.routes import router
 from lib.gateway.service import GatewayService
 from lib.gateway.deployment import GatewayDeploymentRegistry
+from lib.gateway.routing import RoutingService
 
 
 @dataclass(frozen=True)
@@ -71,10 +72,11 @@ def create_app() -> FastAPI:
         proxy = RuntimeProxy(settings.runtime_url)
 
         deployments = GatewayDeploymentRegistry.from_environment()
+        routing = RoutingService(deployments)
 
         gateway = GatewayService(
             proxy=proxy,
-            deployments=deployments,
+            router=routing,
         )
 
         app.state.settings = settings
