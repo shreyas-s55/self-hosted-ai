@@ -106,6 +106,9 @@ Multi model
 python3 tools/generate.py --profile multi
 docker compose -f deploy/compose.generated.yaml up -d --build
 docker ps
+or 
+sudo docker compose -f deploy/compose.generated.yaml down
+sudo docker compose -f deploy/compose.generated.yaml up -d --build
 ```
 
 
