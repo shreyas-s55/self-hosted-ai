@@ -81,6 +81,7 @@ def create_app() -> FastAPI:
 
         app.state.settings = settings
         app.state.proxy = proxy
+        app.state.deployments = deployments
         app.state.gateway = gateway
 
         yield

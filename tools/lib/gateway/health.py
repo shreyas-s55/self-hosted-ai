@@ -6,7 +6,11 @@ upstream runtime health — useful for startup probes or status endpoints
 that want to surface downstream health.
 """
 
+import asyncio
+
 import httpx
+
+from lib.gateway.deployment import GatewayDeploymentRegistry
 
 
 async def check_runtime_health(runtime_url: str) -> bool:
@@ -32,3 +36,27 @@ async def check_runtime_health(runtime_url: str) -> bool:
             return response.status_code == 200
     except httpx.HTTPError:
         return False
+
+
+async def check_deployments_health(
+    deployments: GatewayDeploymentRegistry,
+) -> dict[str, str]:
+    """Return health status for each configured deployment alias."""
+
+    aliases = deployments.aliases()
+    checks = [
+        check_runtime_health(deployments.resolve(alias).runtime_url)
+        for alias in aliases
+    ]
+
+    results = await asyncio.gather(*checks, return_exceptions=True)
+
+    status: dict[str, str] = {}
+
+    for alias, result in zip(aliases, results):
+        if isinstance(result, Exception):
+            status[alias] = "unhealthy"
+        else:
+            status[alias] = "healthy" if result else "unhealthy"
+
+    return status

@@ -25,6 +25,7 @@ class HealthResponse(BaseModel):
     """Response for ``GET /health``."""
 
     status: str
+    deployments: dict[str, str] | None = None
 
 
 class ModelObject(BaseModel):

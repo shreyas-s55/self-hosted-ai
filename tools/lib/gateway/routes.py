@@ -23,6 +23,7 @@ import time
 
 from fastapi import APIRouter, Request
 
+from lib.gateway.health import check_deployments_health
 from lib.gateway.models import (
     HealthResponse,
     ModelList,
@@ -47,9 +48,19 @@ async def platform_info(request: Request) -> PlatformInfo:
 
 
 @router.get("/health", response_model=HealthResponse)
-async def health() -> HealthResponse:
+async def health(request: Request) -> HealthResponse:
     """Return gateway health."""
-    return HealthResponse(status="ok")
+    deployments = request.app.state.deployments
+    deployment_status = await check_deployments_health(deployments)
+
+    overall = "ok"
+    if deployment_status and any(v != "healthy" for v in deployment_status.values()):
+        overall = "degraded"
+
+    return HealthResponse(
+        status=overall,
+        deployments=deployment_status,
+    )
 
 
 @router.get("/v1/models", response_model=ModelList)
