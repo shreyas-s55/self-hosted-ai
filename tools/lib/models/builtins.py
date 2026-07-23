@@ -17,6 +17,28 @@ BUILTIN_MODELS: tuple[ModelMetadata, ...] = (
     # ──────────────────────────────────────────────────────────────────────
 
     ModelMetadata(
+        name="qwen-chat-1.5b",
+        family="qwen",
+        huggingface_repo="Qwen/Qwen2.5-1.5B-Instruct",
+        runtime="vllm",
+        context_length=32768,
+        min_gpu_memory_gb=4.0,
+        supports_chat=True,
+        supports_tool_calling=True,
+        supports_structured_output=True,
+        supports_json_mode=True,
+        supports_embeddings=False,
+        supports_reasoning=False,
+        supports_vision=False,
+        default_parameters={
+            "dtype": "auto",
+            "gpu_memory_utilization": 0.27,
+            "max_model_len": 8192,
+            "enforce_eager": True,
+        },
+    ),
+
+    ModelMetadata(
         name="qwen-chat",
         family="qwen",
         huggingface_repo="Qwen/Qwen2.5-7B-Instruct",
@@ -34,6 +56,28 @@ BUILTIN_MODELS: tuple[ModelMetadata, ...] = (
             "dtype": "auto",
             "gpu_memory_utilization": 0.90,
             "max_model_len": 8192,
+        },
+    ),
+
+    ModelMetadata(
+        name="qwen-coder-1.5b",
+        family="qwen",
+        huggingface_repo="Qwen/Qwen2.5-Coder-1.5B-Instruct",
+        runtime="vllm",
+        context_length=32768,
+        min_gpu_memory_gb=4.0,
+        supports_chat=True,
+        supports_tool_calling=True,
+        supports_structured_output=True,
+        supports_json_mode=True,
+        supports_embeddings=False,
+        supports_reasoning=False,
+        supports_vision=False,
+        default_parameters={
+            "dtype": "auto",
+            "gpu_memory_utilization": 0.27,
+            "max_model_len": 8192,
+            "enforce_eager": True,
         },
     ),
 
@@ -61,6 +105,28 @@ BUILTIN_MODELS: tuple[ModelMetadata, ...] = (
     # ──────────────────────────────────────────────────────────────────────
     # DeepSeek
     # ──────────────────────────────────────────────────────────────────────
+
+    ModelMetadata(
+        name="deepseek-r1-distill-1.5b",
+        family="deepseek",
+        huggingface_repo="deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B",
+        runtime="vllm",
+        context_length=32768,
+        min_gpu_memory_gb=4.0,
+        supports_chat=True,
+        supports_tool_calling=False,
+        supports_structured_output=False,
+        supports_json_mode=True,
+        supports_embeddings=False,
+        supports_reasoning=True,
+        supports_vision=False,
+        default_parameters={
+            "dtype": "auto",
+            "gpu_memory_utilization": 0.27,
+            "max_model_len": 8192,
+            "enforce_eager": True,
+        },
+    ),
 
     ModelMetadata(
         name="deepseek-r1-distill",

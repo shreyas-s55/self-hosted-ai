@@ -185,6 +185,10 @@ Watch routing decisions in gateway logs:
 sudo docker logs gateway --follow | python3 -m json.tool
 ```
 
+Open WebUI in this deployment is configured to use the gateway's OpenAI-compatible
+API only. The Ollama integration is disabled by default, so the UI should not
+attempt to contact `host.docker.internal:11434`.
+
 ## Configuration
 
 All configuration is managed in `config/config.yaml`.

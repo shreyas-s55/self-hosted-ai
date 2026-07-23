@@ -56,6 +56,7 @@ class OpenWebUIService(BaseService):
             "expose": ["8080"],
             "environment": {
                 "TZ": "UTC",
+                "ENABLE_OLLAMA_API": "false",
                 "OPENAI_API_BASE_URL": api_base_url,
                 "OPENAI_API_KEY": (
                     config["gateway"]["authentication"]["api_key"]

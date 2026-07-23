@@ -65,6 +65,9 @@ class GatewayService(BaseService):
                 "runtime": deployment_engine,
                 "runtime_url": f"http://{runtime_service}:{port}/v1",
                 "runtime_service": runtime_service,
+                "supports_tool_calling": str(
+                    deployment.metadata.supports_tool_calling
+                ).lower() == "true",
             }
 
             depends_on[runtime_service] = {"condition": "service_healthy"}

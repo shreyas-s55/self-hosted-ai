@@ -30,6 +30,7 @@ def load_deployments() -> dict[str, GatewayDeployment]:
             repository=metadata["repository"],
             runtime=metadata["runtime"],
             runtime_url=metadata.get("runtime_url", default_runtime_url),
+            supports_tool_calling=bool(metadata.get("supports_tool_calling", False)),
             default=is_default,
         )
 

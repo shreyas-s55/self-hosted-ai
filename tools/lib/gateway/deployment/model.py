@@ -13,4 +13,5 @@ class GatewayDeployment:
     repository: str
     runtime: str
     runtime_url: str
+    supports_tool_calling: bool = False
     default: bool = False
