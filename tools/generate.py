@@ -27,6 +27,14 @@ def _parse_args() -> argparse.Namespace:
         help="Deployment profile (e.g. single, multi).",
     )
 
+    parser.add_argument(
+        "--pin-gpus",
+        action="store_true",
+        default=False,
+        help="Pin each multi-mode runtime container to a dedicated GPU (CUDA_VISIBLE_DEVICES). "
+             "Use on multi-GPU instances (e.g. g6.12xlarge).",
+    )
+
     return parser.parse_args()
 
 
@@ -41,6 +49,9 @@ def main() -> None:
         config["deployment"] = {"mode": args.mode}
     elif profile:
         config["deployment"] = {"mode": profile}
+
+    if args.pin_gpus:
+        config.setdefault("deployment", {})["pin_gpus"] = True
 
     deploy_dir = Path("deploy")
 

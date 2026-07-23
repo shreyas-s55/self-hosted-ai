@@ -60,8 +60,10 @@ class RuntimeService(BaseService):
 
         builds: list[tuple[str, dict[str, Any]]] = []
 
+        pin_gpus = config.get("deployment", {}).get("pin_gpus", False)
         for gpu_index, alias in enumerate(resolver.aliases()):
-            builds.append((f"runtime-{alias}", self._build_for_alias(config, alias, gpu_index=gpu_index)))
+            effective_index = gpu_index if pin_gpus else None
+            builds.append((f"runtime-{alias}", self._build_for_alias(config, alias, gpu_index=effective_index)))
 
         return builds
 

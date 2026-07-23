@@ -47,6 +47,9 @@ class VLLMAdapter(RuntimeAdapter):
             str(parameters.get("max_model_len", 8192)),
         ]
 
+        if parameters.get("enforce_eager", False):
+            command.append("--enforce-eager")
+
         tool_calling = features.get("tool_calling", {})
 
         if tool_calling.get("enabled", False):
