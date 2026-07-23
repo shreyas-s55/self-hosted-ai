@@ -16,6 +16,25 @@ import yaml
 from lib.services import SERVICE_REGISTRY
 
 
+def _load_env_file(path: Path) -> dict[str, str]:
+    """Load a simple KEY=VALUE env file if it exists."""
+    if not path.exists():
+        return {}
+
+    env: dict[str, str] = {}
+
+    with open(path) as f:
+        for raw_line in f:
+            line = raw_line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+
+            key, value = line.split("=", 1)
+            env[key] = value
+
+    return env
+
+
 def generate_env(config: dict[str, Any], output_path: Path) -> None:
     """Generate a .env file from configuration.
 
@@ -25,9 +44,33 @@ def generate_env(config: dict[str, Any], output_path: Path) -> None:
     """
     # Only secrets belong in .env.
     # Non-secret values are inlined directly into the generated compose file.
+    existing_env = _load_env_file(output_path)
+
     env_vars = {
         "HF_TOKEN": str(config.get("huggingface", {}).get("token", "")),
     }
+
+    gateway_cfg = config.get("gateway", {})
+    auth_cfg = gateway_cfg.get("authentication", {})
+
+    if auth_cfg.get("enabled", False):
+        api_key = auth_cfg.get("api_key")
+
+        if api_key == "auto":
+            resolved_api_key = existing_env.get(
+                "GATEWAY_API_KEY",
+                f"sk_selfai_{secrets.token_urlsafe(32)}",
+            )
+        elif api_key:
+            resolved_api_key = str(api_key)
+        else:
+            raise ValueError(
+                "gateway.authentication.api_key must be 'auto' or a non-empty string"
+            )
+
+        # Keep config and generated artifacts in sync for this run.
+        auth_cfg["api_key"] = resolved_api_key
+        env_vars["GATEWAY_API_KEY"] = resolved_api_key
 
     with open(output_path, "w") as f:
         for key, value in env_vars.items():
