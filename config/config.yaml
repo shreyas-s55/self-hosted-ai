@@ -29,31 +29,31 @@ models:
 deployments:
   chat:
     runtime: vllm
-    repository: Qwen/Qwen2.5-1.5B-Instruct
+    repository: Qwen/Qwen3-8B-Instruct
     default: true
     parameters:
       dtype: auto
       enforce_eager: true
-      gpu_memory_utilization: 0.27
-      max_model_len: 8192
+      gpu_memory_utilization: 0.90
+      max_model_len: 131072
 
-  coder:
-    runtime: vllm
-    repository: Qwen/Qwen2.5-Coder-1.5B-Instruct
-    parameters:
-      dtype: auto
-      enforce_eager: true
-      gpu_memory_utilization: 0.27
-      max_model_len: 8192
+  # coder:
+  #   runtime: vllm
+  #   repository: Qwen/Qwen2.5-Coder-1.5B-Instruct
+  #   parameters:
+  #     dtype: auto
+  #     enforce_eager: true
+  #     gpu_memory_utilization: 0.27
+  #     max_model_len: 8192
 
-  reasoning:
-    runtime: vllm
-    repository: deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B
-    parameters:
-      dtype: auto
-      enforce_eager: true
-      gpu_memory_utilization: 0.27
-      max_model_len: 8192
+  # reasoning:
+  #   runtime: vllm
+  #   repository: deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B
+  #   parameters:
+  #     dtype: auto
+  #     enforce_eager: true
+  #     gpu_memory_utilization: 0.27
+  #     max_model_len: 8192
 
 storage:
   download_dir: ./data/models

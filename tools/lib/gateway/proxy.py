@@ -40,6 +40,14 @@ class RuntimeProxy:
         headers = _safe_headers(request.headers)
         target_url = _build_target_url(runtime_url, path)
 
+        print("\n========== GATEWAY REQUEST ==========")
+        print("Target:", target_url)
+
+        try:
+            print(body.decode("utf-8"))
+        except Exception:
+            print(body)
+
         if stream:
             return StreamingResponse(
                 self._stream(target_url, body, headers),
@@ -51,6 +59,13 @@ class RuntimeProxy:
             content=body,
             headers=headers,
         )
+
+        if upstream.status_code >= 400:
+            print("\n========== UPSTREAM RESPONSE ==========")
+            print("Status:", upstream.status_code)
+            print(dict(upstream.headers))
+            print("\n========== UPSTREAM ERROR BODY ==========")
+            print(upstream.text)
 
         return Response(
             content=upstream.content,
@@ -70,6 +85,20 @@ class RuntimeProxy:
             content=body,
             headers=headers,
         ) as upstream:
+
+            if upstream.status_code >= 400:
+                print("\n========== STREAM RESPONSE ==========")
+                print("Status:", upstream.status_code)
+                print(dict(upstream.headers))
+
+                error = await upstream.aread()
+
+                print("\n========== STREAM ERROR BODY ==========")
+                print(error.decode(errors="replace"))
+
+                yield error
+                return
+
             async for chunk in upstream.aiter_raw():
                 yield chunk
 

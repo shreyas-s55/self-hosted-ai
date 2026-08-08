@@ -13,42 +13,15 @@ from lib.openai.errors import OpenAIError
 _COMPLETION_SAFETY_MARGIN = 32
 
 
-def _clamp_max_tokens(
-    extra: dict[str, Any],
-    *,
-    max_completion_tokens: int | None,
-) -> dict[str, Any]:
-    if max_completion_tokens is None:
-        return extra
+def _resolve_requested_completion_tokens(request: ChatCompletionRequest) -> int | None:
+    """Return the client-requested completion budget from whichever field was sent.
 
-    raw_max_tokens = extra.get("max_tokens")
-
-    if raw_max_tokens is None:
-        return extra
-
-    try:
-        requested = int(raw_max_tokens)
-    except (TypeError, ValueError):
-        return extra
-
-    if requested <= max_completion_tokens:
-        return extra
-
-    clamped = dict(extra)
-    clamped["max_tokens"] = max_completion_tokens
-    return clamped
-
-
-def _parse_requested_max_tokens(extra: dict[str, Any]) -> int | None:
-    raw_max_tokens = extra.get("max_tokens")
-
-    if raw_max_tokens is None:
-        return None
-
-    try:
-        return int(raw_max_tokens)
-    except (TypeError, ValueError):
-        return None
+    max_completion_tokens takes precedence (newer OpenAI API field).
+    Falls back to max_tokens for older clients.
+    """
+    if request.max_completion_tokens is not None:
+        return request.max_completion_tokens
+    return request.max_tokens
 
 
 class ChatRequestTransformer:
@@ -57,40 +30,36 @@ class ChatRequestTransformer:
     def __init__(self) -> None:
         self._token_estimator = ChatPromptTokenEstimator()
 
-    def _normalize_max_tokens(
+    def _compute_clamped_max_tokens(
         self,
         *,
         request: ChatCompletionRequest,
         deployment: GatewayDeployment,
         extra: dict[str, Any],
-    ) -> dict[str, Any]:
-        requested_max_tokens = _parse_requested_max_tokens(extra)
+    ) -> int | None:
+        """Return the clamped completion budget, or None to leave it unset."""
+        requested = _resolve_requested_completion_tokens(request)
 
-        if requested_max_tokens is None:
-            return extra
+        if requested is None:
+            return None
 
         context_window = deployment.context_window
 
         if context_window is None:
-            return _clamp_max_tokens(
-                extra,
-                max_completion_tokens=deployment.max_completion_tokens,
-            )
+            # No context-window metadata: fall back to the hard deployment ceiling.
+            ceiling = deployment.max_completion_tokens
+            if ceiling is None or requested <= ceiling:
+                return requested
+            return ceiling
 
         prompt_tokens = self._token_estimator.estimate(
             repository=deployment.repository,
             messages=request.messages,
             tools=extra.get("tools"),
         )
+        available = context_window - prompt_tokens - _COMPLETION_SAFETY_MARGIN
 
-        available_completion_tokens = max(
-            1,
-            context_window
-            - prompt_tokens
-            - _COMPLETION_SAFETY_MARGIN,
-        )
-
-        if available_completion_tokens <= 0:
+        if available <= 0:
             raise OpenAIError(
                 status_code=400,
                 code="context_length_exceeded",
@@ -101,12 +70,7 @@ class ChatRequestTransformer:
                 ),
             )
 
-        if requested_max_tokens <= available_completion_tokens:
-            return extra
-
-        clamped = dict(extra)
-        clamped["max_tokens"] = available_completion_tokens
-        return clamped
+        return min(requested, available)
 
     def transform(
         self,
@@ -124,7 +88,7 @@ class ChatRequestTransformer:
             extra.pop("tools", None)
             extra.pop("parallel_tool_calls", None)
 
-        extra = self._normalize_max_tokens(
+        clamped = self._compute_clamped_max_tokens(
             request=transformed,
             deployment=deployment,
             extra=extra,
@@ -134,5 +98,8 @@ class ChatRequestTransformer:
             model=transformed.model,
             messages=transformed.messages,
             stream=transformed.stream,
+            max_tokens=clamped,
+            # max_completion_tokens is always None on outbound; normalised to max_tokens above.
+            max_completion_tokens=None,
             extra=extra,
         )
