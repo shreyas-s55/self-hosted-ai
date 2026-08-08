@@ -4,8 +4,24 @@ from __future__ import annotations
 
 import json
 import os
+from typing import Any
 
 from lib.gateway.deployment.model import GatewayDeployment
+
+
+def _optional_int(value: Any) -> int | None:
+    if value is None or value == "":
+        return None
+
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        return None
+
+    if parsed <= 0:
+        return None
+
+    return parsed
 
 
 def load_deployments() -> dict[str, GatewayDeployment]:
@@ -31,6 +47,9 @@ def load_deployments() -> dict[str, GatewayDeployment]:
             runtime=metadata["runtime"],
             runtime_url=metadata.get("runtime_url", default_runtime_url),
             supports_tool_calling=bool(metadata.get("supports_tool_calling", False)),
+            max_completion_tokens=_optional_int(
+                metadata.get("max_completion_tokens")
+            ),
             default=is_default,
         )
 

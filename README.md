@@ -189,6 +189,12 @@ Open WebUI in this deployment is configured to use the gateway's OpenAI-compatib
 API only. The Ollama integration is disabled by default, so the UI should not
 attempt to contact `host.docker.internal:11434`.
 
+The gateway also normalizes oversized client `max_tokens` values before
+forwarding requests. The ceiling is derived per deployment from
+`deployments.<alias>.parameters.max_model_len`, so generic OpenAI-compatible
+clients can safely request large outputs without tripping the runtime's hard
+token-budget validation.
+
 ## Configuration
 
 All configuration is managed in `config/config.yaml`.
@@ -241,6 +247,28 @@ When enabled, the runtime adapter appends the appropriate flags. For vLLM
 this adds `--enable-auto-tool-choice --tool-call-parser hermes`.
 
 Set `enabled: false` to disable tool calling without removing the section.
+
+### Gateway Token Ceiling
+
+The gateway clamps any incoming `max_tokens` value that exceeds the selected
+deployment's configured `max_model_len`.
+
+Example:
+
+```yaml
+deployments:
+  chat:
+    runtime: vllm
+    repository: Qwen/Qwen2.5-1.5B-Instruct
+    default: true
+    parameters:
+      max_model_len: 8192
+```
+
+With this deployment, a client request such as `max_tokens: 65536` is rewritten
+to `max_tokens: 8192` before the gateway forwards it upstream. This keeps the
+OpenAI-compatible endpoint stable for Hermes, Open WebUI, LangChain, the OpenAI
+SDK, and other clients while preserving per-deployment routing.
 
 ## Adding a New Runtime
 

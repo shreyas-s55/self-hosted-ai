@@ -10,6 +10,23 @@ from lib.services.base import BaseService
 _CONTAINER_PORT = 9000
 
 
+def _resolve_max_completion_tokens(deployment) -> int | None:
+    raw_limit = deployment.deployment.parameters.get("max_model_len")
+
+    if raw_limit is None:
+        raw_limit = deployment.metadata.default_parameters.get("max_model_len")
+
+    try:
+        limit = int(raw_limit)
+    except (TypeError, ValueError):
+        return None
+
+    if limit <= 0:
+        return None
+
+    return limit
+
+
 class GatewayService(BaseService):
     """Compose service definition for the AI Gateway.
 
@@ -54,6 +71,7 @@ class GatewayService(BaseService):
         for alias in aliases_to_expose:
             deployment = resolver.resolve(alias)
             deployment_engine = deployment.deployment.runtime or engine
+            max_completion_tokens = _resolve_max_completion_tokens(deployment)
 
             runtime_service = deployment_engine
 
@@ -68,6 +86,7 @@ class GatewayService(BaseService):
                 "supports_tool_calling": str(
                     deployment.metadata.supports_tool_calling
                 ).lower() == "true",
+                "max_completion_tokens": max_completion_tokens,
             }
 
             depends_on[runtime_service] = {"condition": "service_healthy"}

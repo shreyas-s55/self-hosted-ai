@@ -2,16 +2,16 @@
 # Regenerate with: python3 tools/generate.py
 
 services:
-  runtime-chat:
+  vllm:
     image: vllm/vllm-openai:latest
-    container_name: runtime-chat
-    hostname: runtime-chat
+    container_name: vllm
+    hostname: vllm
     restart: unless-stopped
     runtime: nvidia
     ipc: host
     command:
     - --model
-    - Qwen/Qwen2.5-7B-Instruct
+    - Qwen/Qwen2.5-1.5B-Instruct
     - --host
     - 0.0.0.0
     - --port
@@ -19,96 +19,16 @@ services:
     - --dtype
     - auto
     - --gpu-memory-utilization
-    - '0.9'
+    - '0.27'
     - --max-model-len
     - '8192'
+    - --enforce-eager
     - --enable-auto-tool-choice
     - --tool-call-parser
     - hermes
     environment:
       HUGGING_FACE_HUB_TOKEN: ${HF_TOKEN}
-    volumes:
-    - ./data/models:/root/.cache/huggingface
-    expose:
-    - '8000'
-    healthcheck:
-      test:
-      - CMD
-      - python3
-      - -c
-      - import urllib.request; urllib.request.urlopen('http://localhost:8000/health')
-      interval: 10s
-      timeout: 5s
-      retries: 60
-      start_period: 120s
-    networks:
-    - ai-network
-  runtime-coder:
-    image: vllm/vllm-openai:latest
-    container_name: runtime-coder
-    hostname: runtime-coder
-    restart: unless-stopped
-    runtime: nvidia
-    ipc: host
-    command:
-    - --model
-    - deepseek-ai/DeepSeek-Coder
-    - --host
-    - 0.0.0.0
-    - --port
-    - '8000'
-    - --dtype
-    - auto
-    - --gpu-memory-utilization
-    - '0.9'
-    - --max-model-len
-    - '8192'
-    - --enable-auto-tool-choice
-    - --tool-call-parser
-    - hermes
-    environment:
-      HUGGING_FACE_HUB_TOKEN: ${HF_TOKEN}
-    volumes:
-    - ./data/models:/root/.cache/huggingface
-    expose:
-    - '8000'
-    healthcheck:
-      test:
-      - CMD
-      - python3
-      - -c
-      - import urllib.request; urllib.request.urlopen('http://localhost:8000/health')
-      interval: 10s
-      timeout: 5s
-      retries: 60
-      start_period: 120s
-    networks:
-    - ai-network
-  runtime-reasoning:
-    image: vllm/vllm-openai:latest
-    container_name: runtime-reasoning
-    hostname: runtime-reasoning
-    restart: unless-stopped
-    runtime: nvidia
-    ipc: host
-    command:
-    - --model
-    - Qwen/QwQ
-    - --host
-    - 0.0.0.0
-    - --port
-    - '8000'
-    - --dtype
-    - auto
-    - --gpu-memory-utilization
-    - '0.9'
-    - --max-model-len
-    - '8192'
-    - --enable-auto-tool-choice
-    - --tool-call-parser
-    - hermes
-    environment:
-      HUGGING_FACE_HUB_TOKEN: ${HF_TOKEN}
+      PYTORCH_CUDA_ALLOC_CONF: expandable_segments:True
     volumes:
     - ./data/models:/root/.cache/huggingface
     expose:
@@ -134,25 +54,18 @@ services:
     ports:
     - 9000:9000
     depends_on:
-      runtime-chat:
-        condition: service_healthy
-      runtime-coder:
-        condition: service_healthy
-      runtime-reasoning:
+      vllm:
         condition: service_healthy
     environment:
-      GATEWAY_RUNTIME_URL: http://runtime-chat:8000/v1
+      GATEWAY_RUNTIME_URL: http://vllm:8000/v1
       GATEWAY_RUNTIME: vllm
-      GATEWAY_MODELS: chat,coder,reasoning
+      GATEWAY_MODELS: chat
       GATEWAY_DEFAULT_DEPLOYMENT: chat
-      GATEWAY_DEPLOYMENTS: '{"chat": {"repository": "Qwen/Qwen2.5-7B-Instruct", "runtime":
-        "vllm", "runtime_url": "http://runtime-chat:8000/v1", "runtime_service": "runtime-chat"},
-        "coder": {"repository": "deepseek-ai/DeepSeek-Coder", "runtime": "vllm", "runtime_url":
-        "http://runtime-coder:8000/v1", "runtime_service": "runtime-coder"}, "reasoning":
-        {"repository": "Qwen/QwQ", "runtime": "vllm", "runtime_url": "http://runtime-reasoning:8000/v1",
-        "runtime_service": "runtime-reasoning"}}'
+      GATEWAY_DEPLOYMENTS: '{"chat": {"repository": "Qwen/Qwen2.5-1.5B-Instruct",
+        "runtime": "vllm", "runtime_url": "http://vllm:8000/v1", "runtime_service":
+        "vllm", "supports_tool_calling": true, "max_completion_tokens": 8192}}'
       GATEWAY_AUTH_ENABLED: 'true'
-      GATEWAY_API_KEY: sk_selfai_X0mN_t_chIMedarmQFLl1thXcJumakvI12RYJ8BaSSw
+      GATEWAY_API_KEY: sk_selfai_bT9UhDVy4Aavi91sLYGwCQ6diYcYTwKAxn4rwwBHm7w
     expose:
     - '9000'
     healthcheck:
@@ -178,8 +91,9 @@ services:
     - '8080'
     environment:
       TZ: UTC
+      ENABLE_OLLAMA_API: 'false'
       OPENAI_API_BASE_URL: http://gateway:9000/v1
-      OPENAI_API_KEY: sk_selfai_X0mN_t_chIMedarmQFLl1thXcJumakvI12RYJ8BaSSw
+      OPENAI_API_KEY: sk_selfai_bT9UhDVy4Aavi91sLYGwCQ6diYcYTwKAxn4rwwBHm7w
     volumes:
     - ./data/open-webui:/app/backend/data
     networks:
