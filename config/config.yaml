@@ -29,13 +29,13 @@ models:
 deployments:
   chat:
     runtime: vllm
-    repository: Qwen/Qwen3-8B-Instruct
+    repository: Qwen/Qwen3-4B
     default: true
     parameters:
       dtype: auto
       enforce_eager: true
-      gpu_memory_utilization: 0.90
-      max_model_len: 131072
+      gpu_memory_utilization: 0.95
+      max_model_len: 32768
 
   # coder:
   #   runtime: vllm

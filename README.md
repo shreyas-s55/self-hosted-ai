@@ -74,6 +74,52 @@ steps in order:
    for the runtime health check (`GET /health`) to return HTTP 200.
 5. **Status** — `docker compose ps` reports the final state.
 
+## Agent Integration
+
+The platform provides a production-grade OpenAI-compatible API that autonomous
+agents can consume without modification.
+
+### Architecture
+
+```
+Agent Clients
+  ├─ OpenClaw
+  ├─ Hermes Agent
+  └─ Open WebUI
+       │
+       ↓
+OpenAI-compatible API
+       │
+       ↓
+AI Gateway :9000
+       │
+       ↓
+vLLM Runtime
+       │
+       ↓
+Self-hosted LLM
+```
+
+Agents never communicate directly with vLLM. The gateway provides:
+
+- **Authentication** — Bearer token validation
+- **OpenAI API compatibility** — `/v1/chat/completions` endpoint
+- **Routing** — Model alias resolution to physical deployments
+- **Context normalization** — Prompt-aware `max_tokens` clamping
+- **Runtime abstraction** — Clients remain agnostic to the inference engine
+
+### Supported Fields
+
+The gateway transparently supports both OpenAI token budget fields:
+
+| Field | Support | Notes |
+|-------|---------|-------|
+| `max_tokens` | ✅ Full | Legacy OpenAI field |
+| `max_completion_tokens` | ✅ Full | Newer OpenAI field |
+
+When both are present, `max_completion_tokens` takes precedence. The gateway
+always normalizes to `max_tokens` before forwarding to vLLM.
+
 ## Goals
 
 - Single EC2 deployment
@@ -81,6 +127,10 @@ steps in order:
 - Docker Compose with generated configuration
 - OpenAI-compatible API
 - Open WebUI
+- Autonomous agent support
+- OpenClaw compatibility
+- Hermes Agent compatibility
+- OpenAI-compatible agent ecosystem
 - Low cost
 - Easy to destroy and recreate
 
@@ -189,11 +239,174 @@ Open WebUI in this deployment is configured to use the gateway's OpenAI-compatib
 API only. The Ollama integration is disabled by default, so the UI should not
 attempt to contact `host.docker.internal:11434`.
 
+### 5. OpenClaw Agent Setup
+
+[OpenClaw](https://openclaw.ai) is an autonomous AI agent that operates through
+an OpenAI-compatible API.
+
+**Installation:**
+
+```bash
+curl -fsSL https://openclaw.ai/install.sh | bash
+```
+
+**Configuration:**
+
+```bash
+openclaw config
+```
+
+Select:
+
+```
+Model
+  → Model/auth provider
+    → More...
+      → vLLM
+```
+
+**Configuration values:**
+
+| Field | Value |
+|-------|-------|
+| Base URL | `http://<SERVER_IP>:9000/v1` |
+| API Key | `<Gateway API key from compose.generated.yaml>` |
+| Model | `chat` |
+
+**Important:** Use the model provider **`vllm/chat`** in OpenClaw's configuration,
+not legacy custom provider names. This ensures compatibility with the gateway's
+routing layer.
+
+### 6. Hermes Agent Setup
+
+[Hermes Agent](https://github.com/coleam00/hermes-agent) connects using the
+standard OpenAI-compatible endpoint.
+
+**Configuration:**
+
+Add to `~/.hermes/.env`:
+
+```bash
+OPENAI_BASE_URL=http://<SERVER_IP>:9000/v1
+OPENAI_API_KEY=<Gateway API key>
+```
+
+**Endpoint compatibility:**
+
+| Endpoint | Support | Notes |
+|----------|---------|-------|
+| `POST /v1/chat/completions` | ✅ Full | Streaming and non-streaming |
+| `GET /v1/models` | ✅ Full | Lists available deployment aliases |
+| `POST /v1/embeddings` | ❌ Not implemented | Future enhancement |
+
+**Recommended Hermes configuration:**
+
+```yaml
+provider: openai
+model: chat
+streaming: true
+tool_calling: true
+```
+
 The gateway also normalizes oversized client `max_tokens` values before
 forwarding requests. For each routed deployment, it loads the deployment's
 tokenizer, estimates prompt tokens from the forwarded chat payload, and clamps
 the requested completion budget to the remaining space inside
 `deployments.<alias>.parameters.max_model_len`.
+
+## Agent Troubleshooting
+
+### Health Check
+
+Verify the gateway is reachable and healthy:
+
+```bash
+curl -H "Authorization: Bearer $TOKEN" http://localhost:9000/health
+```
+
+Expected response:
+
+```json
+{
+  "status": "ok",
+  "deployments": {
+    "chat": "healthy",
+    "coder": "healthy",
+    "reasoning": "healthy"
+  }
+}
+```
+
+### List Available Models
+
+Query the deployed model aliases:
+
+```bash
+curl -H "Authorization: Bearer $TOKEN" http://localhost:9000/v1/models
+```
+
+### Gateway Logs
+
+Monitor gateway requests in real time:
+
+```bash
+docker logs gateway -f
+```
+
+Filter for errors only:
+
+```bash
+docker logs gateway -f 2>&1 | grep -i error
+```
+
+### Common Issues
+
+**Wrong model selected**
+
+Symptom: `404 Model not found`
+
+Solution: Use `chat`, `coder`, or `reasoning` as the model name. For OpenClaw,
+select the `vllm/chat` provider.
+
+---
+
+**Authentication failure**
+
+Symptom: `401 Missing API key` or `401 Invalid API key`
+
+Solution: The gateway API key is auto-generated on each `generate.py` run. After
+regenerating deployment artifacts, update the agent configuration:
+
+```bash
+grep GATEWAY_API_KEY deploy/compose.generated.yaml
+```
+
+---
+
+**Context length errors**
+
+Symptom: `400 context_length_exceeded`
+
+Solution: The prompt alone exceeds the deployment's `max_model_len`. Either:
+
+- Reduce conversation history in the agent
+- Decrease `max_model_len` in `config.yaml` (increases available prompt space)
+- Deploy a model with a larger native context window
+
+---
+
+**Connection refused**
+
+Symptom: Agent cannot reach `http://<SERVER_IP>:9000`
+
+Solution: Verify the gateway container is running and port 9000 is accessible:
+
+```bash
+docker ps | grep gateway
+curl http://localhost:9000/health
+```
+
+If running remotely, ensure AWS security group allows inbound TCP port 9000.
 
 ## Configuration
 
@@ -244,7 +457,15 @@ features:
 ```
 
 When enabled, the runtime adapter appends the appropriate flags. For vLLM
-this adds `--enable-auto-tool-choice --tool-call-parser hermes`.
+this translates to:
+
+```bash
+--enable-auto-tool-choice --tool-call-parser hermes
+```
+
+The gateway transparently forwards tool schemas and tool-call responses between
+agents and vLLM. Agents that support OpenAI-compatible tool calling (OpenClaw,
+Hermes Agent, LangChain, Open WebUI) work without modification.
 
 Set `enabled: false` to disable tool calling without removing the section.
 
@@ -276,6 +497,50 @@ chat payload the gateway forwards upstream, including tool schemas when they are
 present. This keeps the OpenAI-compatible endpoint stable for Hermes, Open WebUI,
 LangChain, the OpenAI SDK, and other clients while preserving per-deployment
 routing.
+
+### Recommended Agent Model
+
+For production agent workloads on `g6.xlarge` (A10G 24GB GPU), the following
+profile has been validated with OpenClaw and Hermes Agent:
+
+```yaml
+deployments:
+  chat:
+    runtime: vllm
+    repository: Qwen/Qwen2.5-7B-Instruct
+    default: true
+    parameters:
+      dtype: auto
+      enforce_eager: true
+      gpu_memory_utilization: 0.95
+      max_model_len: 32768
+```
+
+**Optimized for:**
+
+- A10G 24GB VRAM
+- Multi-turn agent conversations
+- Tool calling with Hermes parser
+- Long context windows (up to 32K tokens)
+- Stable vLLM operation under continuous load
+
+**Alternative for memory-constrained environments:**
+
+```yaml
+deployments:
+  chat:
+    runtime: vllm
+    repository: Qwen/Qwen2.5-1.5B-Instruct
+    default: true
+    parameters:
+      dtype: auto
+      enforce_eager: true
+      gpu_memory_utilization: 0.27
+      max_model_len: 8192
+```
+
+This smaller model fits three concurrent deployments on a single `g6.xlarge`
+in multi-mode.
 
 ## Adding a New Runtime
 
