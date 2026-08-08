@@ -65,6 +65,19 @@ resource "aws_security_group" "this" {
   }
 
   #
+  # AI Gateway (Hermes / OpenAI-compatible API)
+  #
+  ingress {
+    description = "AI Gateway API"
+
+    from_port = 9000
+    to_port   = 9000
+    protocol  = "tcp"
+
+    cidr_blocks = var.web_allowed_cidr
+  }
+
+  #
   # Allow all outbound traffic
   #
   egress {
