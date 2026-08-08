@@ -9,6 +9,9 @@ from lib.gateway.tokenizer import ChatPromptTokenEstimator
 from lib.openai.chat.models import ChatCompletionRequest
 from lib.openai.errors import OpenAIError
 
+# Reserve a small safety margin for tokenizer/runtime differences.
+_COMPLETION_SAFETY_MARGIN = 32
+
 
 def _clamp_max_tokens(
     extra: dict[str, Any],
@@ -79,16 +82,22 @@ class ChatRequestTransformer:
             messages=request.messages,
             tools=extra.get("tools"),
         )
-        available_completion_tokens = context_window - prompt_tokens
+
+        available_completion_tokens = max(
+            1,
+            context_window
+            - prompt_tokens
+            - _COMPLETION_SAFETY_MARGIN,
+        )
 
         if available_completion_tokens <= 0:
             raise OpenAIError(
                 status_code=400,
                 code="context_length_exceeded",
                 message=(
-                    f'This deployment supports a maximum context length of '
-                    f'{context_window} tokens, but the prompt is estimated at '
-                    f'{prompt_tokens} tokens, leaving no room for completion.'
+                    f"This deployment supports a maximum context length of "
+                    f"{context_window} tokens, but the prompt is estimated at "
+                    f"{prompt_tokens} tokens, leaving no room for completion."
                 ),
             )
 
