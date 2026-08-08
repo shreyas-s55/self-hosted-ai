@@ -50,6 +50,9 @@ def load_deployments() -> dict[str, GatewayDeployment]:
             max_completion_tokens=_optional_int(
                 metadata.get("max_completion_tokens")
             ),
+                context_window=_optional_int(
+                    metadata.get("context_window")
+                ),
             default=is_default,
         )
 

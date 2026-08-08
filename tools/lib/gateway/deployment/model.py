@@ -14,5 +14,6 @@ class GatewayDeployment:
     runtime: str
     runtime_url: str
     supports_tool_calling: bool = False
+    context_window: int | None = None
     max_completion_tokens: int | None = None
     default: bool = False

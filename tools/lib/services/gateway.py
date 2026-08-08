@@ -10,11 +10,14 @@ from lib.services.base import BaseService
 _CONTAINER_PORT = 9000
 
 
-def _resolve_max_completion_tokens(deployment) -> int | None:
+def _resolve_context_window(deployment) -> int | None:
     raw_limit = deployment.deployment.parameters.get("max_model_len")
 
     if raw_limit is None:
         raw_limit = deployment.metadata.default_parameters.get("max_model_len")
+
+    if raw_limit is None:
+        raw_limit = deployment.metadata.context_length
 
     try:
         limit = int(raw_limit)
@@ -65,13 +68,13 @@ class GatewayService(BaseService):
 
         # Export deployment metadata so the gateway can resolve model aliases
         # at runtime without requiring config.yaml.
-        gateway_deployments: dict[str, dict[str, str]] = {}
+        gateway_deployments: dict[str, dict[str, Any]] = {}
         depends_on: dict[str, dict[str, str]] = {}
 
         for alias in aliases_to_expose:
             deployment = resolver.resolve(alias)
             deployment_engine = deployment.deployment.runtime or engine
-            max_completion_tokens = _resolve_max_completion_tokens(deployment)
+            context_window = _resolve_context_window(deployment)
 
             runtime_service = deployment_engine
 
@@ -86,7 +89,8 @@ class GatewayService(BaseService):
                 "supports_tool_calling": str(
                     deployment.metadata.supports_tool_calling
                 ).lower() == "true",
-                "max_completion_tokens": max_completion_tokens,
+                "context_window": context_window,
+                "max_completion_tokens": context_window,
             }
 
             depends_on[runtime_service] = {"condition": "service_healthy"}
@@ -114,6 +118,7 @@ class GatewayService(BaseService):
                 "GATEWAY_MODELS": gateway_models,
                 "GATEWAY_DEFAULT_DEPLOYMENT": default_deployment,
                 "GATEWAY_DEPLOYMENTS": json.dumps(gateway_deployments),
+                "HUGGING_FACE_HUB_TOKEN": "${HF_TOKEN}",
 
                 # Authentication
                 "GATEWAY_AUTH_ENABLED": str(
@@ -121,6 +126,9 @@ class GatewayService(BaseService):
                 ).lower(),
                 "GATEWAY_API_KEY": config["gateway"]["authentication"]["api_key"],
             },
+            "volumes": [
+                f"{config['storage']['download_dir']}:/root/.cache/huggingface:ro",
+            ],
             "expose": [str(_CONTAINER_PORT)],
             "healthcheck": {
                 "test": ["CMD", "python3", "-c", healthcheck_script],

@@ -190,10 +190,10 @@ API only. The Ollama integration is disabled by default, so the UI should not
 attempt to contact `host.docker.internal:11434`.
 
 The gateway also normalizes oversized client `max_tokens` values before
-forwarding requests. The ceiling is derived per deployment from
-`deployments.<alias>.parameters.max_model_len`, so generic OpenAI-compatible
-clients can safely request large outputs without tripping the runtime's hard
-token-budget validation.
+forwarding requests. For each routed deployment, it loads the deployment's
+tokenizer, estimates prompt tokens from the forwarded chat payload, and clamps
+the requested completion budget to the remaining space inside
+`deployments.<alias>.parameters.max_model_len`.
 
 ## Configuration
 
@@ -250,8 +250,8 @@ Set `enabled: false` to disable tool calling without removing the section.
 
 ### Gateway Token Ceiling
 
-The gateway clamps any incoming `max_tokens` value that exceeds the selected
-deployment's configured `max_model_len`.
+The gateway computes a prompt-aware completion budget for any request that
+includes `max_tokens`.
 
 Example:
 
@@ -266,9 +266,16 @@ deployments:
 ```
 
 With this deployment, a client request such as `max_tokens: 65536` is rewritten
-to `max_tokens: 8192` before the gateway forwards it upstream. This keeps the
-OpenAI-compatible endpoint stable for Hermes, Open WebUI, LangChain, the OpenAI
-SDK, and other clients while preserving per-deployment routing.
+to the smaller of:
+
+- the client-requested `max_tokens`
+- `max_model_len - prompt_tokens`
+
+Prompt tokens are estimated with the routed model's tokenizer against the same
+chat payload the gateway forwards upstream, including tool schemas when they are
+present. This keeps the OpenAI-compatible endpoint stable for Hermes, Open WebUI,
+LangChain, the OpenAI SDK, and other clients while preserving per-deployment
+routing.
 
 ## Adding a New Runtime
 

@@ -63,9 +63,13 @@ services:
       GATEWAY_DEFAULT_DEPLOYMENT: chat
       GATEWAY_DEPLOYMENTS: '{"chat": {"repository": "Qwen/Qwen2.5-1.5B-Instruct",
         "runtime": "vllm", "runtime_url": "http://vllm:8000/v1", "runtime_service":
-        "vllm", "supports_tool_calling": true, "max_completion_tokens": 8192}}'
+        "vllm", "supports_tool_calling": true, "context_window": 8192, "max_completion_tokens":
+        8192}}'
+      HUGGING_FACE_HUB_TOKEN: ${HF_TOKEN}
       GATEWAY_AUTH_ENABLED: 'true'
       GATEWAY_API_KEY: sk_selfai_bT9UhDVy4Aavi91sLYGwCQ6diYcYTwKAxn4rwwBHm7w
+    volumes:
+    - ./data/models:/root/.cache/huggingface:ro
     expose:
     - '9000'
     healthcheck:
