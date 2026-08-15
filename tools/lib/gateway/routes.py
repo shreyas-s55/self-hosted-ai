@@ -41,12 +41,10 @@ def _exposed_models(aliases: tuple[str, ...]) -> list[str]:
     ``auto`` model so clients such as Open WebUI can select the routing mode
     explicitly.
     """
-    models = list(aliases)
-
     if len(aliases) > 1 and "auto" not in aliases:
-        models.append("auto")
+        return ["auto", *aliases]
 
-    return models
+    return list(aliases)
 
 
 @router.get("/", response_model=PlatformInfo)
