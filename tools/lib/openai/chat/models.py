@@ -22,7 +22,7 @@ class ChatCompletionRequest:
     # All remaining OpenAI parameters passthrough unchanged.
     extra: dict[str, Any] = field(default_factory=dict)
 
-    def with_model(self, model: str) -> "ChatCompletionRequest":
+    def with_model(self, model: str) -> ChatCompletionRequest:
         """Return a copy using a different model."""
         return replace(self, model=model)
 

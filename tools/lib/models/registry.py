@@ -1,6 +1,6 @@
 """Model registry — lookup and name resolution."""
 
-from typing import Iterator
+from collections.abc import Iterator
 
 from lib.models.metadata import ModelMetadata
 

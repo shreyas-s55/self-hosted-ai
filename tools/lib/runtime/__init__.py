@@ -7,8 +7,11 @@ To add a new runtime:
 3. Register it in ``_REGISTRY`` below.
 """
 
-from lib.runtime.base import RuntimeAdapter, RuntimeCapabilities
+from lib.runtime.base import RuntimeAdapter
+from lib.runtime.base import RuntimeCapabilities as RuntimeCapabilities
 from lib.runtime.vllm import VLLMAdapter
+
+__all__ = ["SUPPORTED_RUNTIMES", "RuntimeCapabilities", "get_runtime_adapter"]
 
 _REGISTRY: dict[str, type[RuntimeAdapter]] = {
     "vllm": VLLMAdapter,

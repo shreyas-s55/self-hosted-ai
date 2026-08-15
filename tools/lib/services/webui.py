@@ -31,7 +31,6 @@ class OpenWebUIService(BaseService):
         gateway_enabled = config.get("gateway", {}).get("enabled", True)
 
         if gateway_enabled:
-            gateway_port = config.get("gateway", {}).get("port", _GATEWAY_CONTAINER_PORT)
             api_base_url = f"http://gateway:{_GATEWAY_CONTAINER_PORT}/v1"
             depends_on = {"gateway": {"condition": "service_healthy"}}
         else:

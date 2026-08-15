@@ -5,7 +5,6 @@ from uuid import uuid4
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 
-
 REQUEST_ID_HEADER = "X-Request-ID"
 
 

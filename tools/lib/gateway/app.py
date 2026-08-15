@@ -25,6 +25,7 @@ from dataclasses import dataclass
 
 from fastapi import FastAPI
 
+from lib.gateway.deployment import GatewayDeploymentRegistry
 from lib.gateway.logging import LoggingMiddleware
 from lib.gateway.middleware import (
     AuthenticationMiddleware,
@@ -32,9 +33,8 @@ from lib.gateway.middleware import (
 )
 from lib.gateway.proxy import RuntimeProxy
 from lib.gateway.routes import router
-from lib.gateway.service import GatewayService
-from lib.gateway.deployment import GatewayDeploymentRegistry
 from lib.gateway.routing import RoutingService
+from lib.gateway.service import GatewayService
 
 
 @dataclass(frozen=True)

@@ -122,11 +122,6 @@ def _validate_features(
     if engine in SUPPORTED_RUNTIMES:
         runtime_caps = get_runtime_adapter(engine).capabilities()
 
-    deployments = [
-        resolver.resolve(alias)
-        for alias in resolver.aliases()
-    ]
-
     # Feature capability validation only applies to the default deployment.
     # Non-default deployments in multi-model configs may support different
     # capability subsets; the runtime service filters feature flags per model.

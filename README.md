@@ -1,6 +1,39 @@
 # Self-Hosted AI
 
-A fully automated, self-hosted Open Source LLM platform on AWS.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![CI](https://github.com/your-org/self-hosted-ai/actions/workflows/ci.yml/badge.svg)](https://github.com/your-org/self-hosted-ai/actions/workflows/ci.yml)
+[![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
+[![Terraform](https://img.shields.io/badge/terraform-1.9+-purple.svg)](https://www.terraform.io/)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
+
+A fully automated, self-hosted open-source LLM platform on AWS. Provision a GPU instance, deploy one or more models behind an OpenAI-compatible gateway, and tear it all down when you're done — driven by a single config file.
+
+> **Highlights**
+> - One config file drives everything: infrastructure, runtime, and routing
+> - OpenAI-compatible API — works with any agent or client without modification
+> - Intelligent automatic model routing (`model="auto"`)
+> - Ephemeral by design — cheap to run, cheap to destroy
+> - Production-grade gateway: auth, structured logging, health checks, request IDs
+
+---
+
+## Table of Contents
+
+- [Architecture](#architecture)
+- [Prerequisites](#prerequisites)
+- [Quick Start](#quick-start)
+- [Deployment Modes](#deployment-modes)
+- [Configuration](#configuration)
+- [API Reference](#api-reference)
+- [Agent Integration](#agent-integration)
+- [Adding a New Runtime](#adding-a-new-runtime)
+- [Project Structure](#project-structure)
+- [Troubleshooting](#troubleshooting)
+- [Roadmap](#roadmap)
+- [Contributing](#contributing)
+- [License](#license)
+
+---
 
 ## Architecture
 
@@ -17,17 +50,19 @@ config/config.yaml               ← Single source of truth
                           └──→ docker compose up
 ```
 
-### Deployment Modes
+### Stack
 
-| Mode | Flag | Description |
-|------|------|-------------|
-| `single` | `--profile single` | One runtime serving the default model |
-| `multi` | `--profile multi` | One runtime per deployment, all sharing the GPU |
-| `multi` + GPU pinning | `--profile multi --pin-gpus` | Each runtime pinned to a dedicated GPU (multi-GPU instances) |
+| Component | Technology | Port |
+|-----------|-----------|------|
+| Inference runtime | [vLLM](https://github.com/vllm-project/vllm) | 8000 (internal) |
+| AI Gateway | FastAPI (custom) | 9000 |
+| Web UI | [Open WebUI](https://github.com/open-webui/open-webui) | 8080 (internal) |
+| Reverse proxy | [Caddy](https://caddyserver.com/) | 80 |
+| Infrastructure | Terraform + AWS EC2 | — |
 
 ### Intelligent Routing
 
-The gateway routes requests automatically when `model="auto"`:
+When clients send `model="auto"`, the gateway classifies the request and routes to the best deployment:
 
 ```
 Client  →  Gateway  →  RoutingService  →  Classifier  →  Deployment
@@ -36,17 +71,17 @@ Client  →  Gateway  →  RoutingService  →  Classifier  →  Deployment
                                   coder   reasoning    chat (default)
 ```
 
-- **coder** — coding keywords detected (Python, FastAPI, SQL, Docker, Terraform, …)
-- **reasoning** — logic/math keywords detected (prove, theorem, equation, …)
-- **chat** — fallback default
+| Route | Trigger |
+|-------|---------|
+| `coder` | Coding keywords detected (Python, SQL, Docker, Terraform, …) |
+| `reasoning` | Logic/math keywords detected (prove, theorem, equation, …) |
+| `chat` | Fallback default |
 
-Explicit model names (`chat`, `coder`, `reasoning`) bypass the classifier and route directly.
+Explicit model names (`chat`, `coder`, `reasoning`) bypass the classifier entirely.
 
-### Runtime Adapter
+### Runtime Adapter Pattern
 
-The platform uses a **runtime adapter** pattern to support multiple inference
-engines. Each adapter translates the unified configuration into engine-specific
-command-line arguments.
+The platform abstracts inference engines through a `RuntimeAdapter` interface. Adding a new engine requires implementing one class.
 
 ```
 tools/lib/runtime/
@@ -55,310 +90,287 @@ tools/lib/runtime/
 └── vllm.py        ← vLLM implementation (VLLMAdapter)
 ```
 
-Currently supported runtimes:
+| Runtime | Status |
+|---------|--------|
+| vLLM | ✅ Supported |
+| SGLang | 🔜 Planned |
+| llama.cpp | 🔜 Planned |
+| Ollama | 🔜 Planned |
 
-| Runtime | Adapter        | Status        |
-|---------|----------------|---------------|
-| vLLM    | `VLLMAdapter`  | Supported     |
-
-### Deployment Flow
-
-The deployment script (`deploy/scripts/deploy.sh`) executes the following
-steps in order:
-
-1. **Validate** — `python3 tools/validate.py` checks `config/config.yaml`.
-2. **Generate** — `python3 tools/generate.py` produces `deploy/.env` and
-   `deploy/compose.generated.yaml`.
-3. **Pull** — `docker compose pull` fetches the latest container images.
-4. **Start** — `docker compose up -d --wait` launches all services and waits
-   for the runtime health check (`GET /health`) to return HTTP 200.
-5. **Status** — `docker compose ps` reports the final state.
-
-## Agent Integration
-
-The platform provides a production-grade OpenAI-compatible API that autonomous
-agents can consume without modification.
-
-### Architecture
-
-```
-Agent Clients
-  ├─ OpenClaw
-  ├─ Hermes Agent
-  └─ Open WebUI
-       │
-       ↓
-OpenAI-compatible API
-       │
-       ↓
-AI Gateway :9000
-       │
-       ↓
-vLLM Runtime
-       │
-       ↓
-Self-hosted LLM
-```
-
-Agents never communicate directly with vLLM. The gateway provides:
-
-- **Authentication** — Bearer token validation
-- **OpenAI API compatibility** — `/v1/chat/completions` endpoint
-- **Routing** — Model alias resolution to physical deployments
-- **Context normalization** — Prompt-aware `max_tokens` clamping
-- **Runtime abstraction** — Clients remain agnostic to the inference engine
-
-### Supported Fields
-
-The gateway transparently supports both OpenAI token budget fields:
-
-| Field | Support | Notes |
-|-------|---------|-------|
-| `max_tokens` | ✅ Full | Legacy OpenAI field |
-| `max_completion_tokens` | ✅ Full | Newer OpenAI field |
-
-When both are present, `max_completion_tokens` takes precedence. The gateway
-always normalizes to `max_tokens` before forwarding to vLLM.
-
-## Goals
-
-- Single EC2 deployment
-- Terraform automation
-- Docker Compose with generated configuration
-- OpenAI-compatible API
-- Open WebUI
-- Autonomous agent support
-- OpenClaw compatibility
-- Hermes Agent compatibility
-- OpenAI-compatible agent ecosystem
-- Low cost
-- Easy to destroy and recreate
+---
 
 ## Prerequisites
 
-- AWS account with appropriate permissions
-- Terraform installed locally
-- SSH key pair
+| Requirement | Notes |
+|-------------|-------|
+| AWS account | Permissions: VPC, EC2, IAM |
+| Terraform ≥ 1.9 | [Install guide](https://developer.hashicorp.com/terraform/install) |
+| SSH key pair | Existing AWS key pair name |
+| Python 3.12+ | For running tools locally |
+| HuggingFace account | Token required for gated models |
 
-## Deployment
+---
 
-### 1. Provision Infrastructure
+## Quick Start
+
+### 1. Clone and configure
+
+```bash
+git clone https://github.com/your-org/self-hosted-ai.git
+cd self-hosted-ai
+```
+
+Edit `config/config.yaml` to set your model and HuggingFace token:
+
+```yaml
+deployments:
+  chat:
+    runtime: vllm
+    repository: Qwen/Qwen3-4B
+    default: true
+    parameters:
+      dtype: auto
+      gpu_memory_utilization: 0.95
+      max_model_len: 32768
+
+huggingface:
+  token: "hf_your_token_here"
+```
+
+### 2. Configure Terraform
+
+Copy and edit the variables file:
 
 ```bash
 cd terraform
+cp terraform.tfvars.example terraform.tfvars
+```
+
+Edit `terraform.tfvars`:
+
+```hcl
+aws_region    = "us-east-1"
+instance_type = "g6.xlarge"   # g5.2xlarge, g6.xlarge, g6.12xlarge, etc.
+enable_gpu    = true
+```
+
+### 3. Deploy infrastructure
+
+```bash
+terraform init
 terraform apply
 ```
 
-On a fresh instance, this now bootstraps the machine and brings up the default
-single-model platform automatically. For GPU instances, the instance will
-install the NVIDIA driver, reboot once, install the NVIDIA container runtime,
-verify GPU access, and then deploy the stack.
+Terraform provisions the EC2 instance and runs the bootstrap script automatically. For GPU instances, the instance installs NVIDIA drivers, reboots once, installs the NVIDIA container runtime, and launches the full stack.
 
-### 2. Install GPU Drivers
-
-For GPU instances, bootstrap now installs the NVIDIA driver automatically,
-reboots once, installs the NVIDIA container runtime, verifies `nvidia-smi`,
-and then runs the default single-model deployment.
-
-You can watch progress after SSH:
+### 4. Watch bootstrap progress
 
 ```bash
+# Get the instance IP
+terraform output
+
+# SSH and follow the log
+ssh -i ~/.ssh/your-key.pem ubuntu@<INSTANCE_IP>
 sudo tail -f /var/log/auto_gpu_setup.log
 ```
 
-You can also inspect the automation service directly:
+Or inspect the systemd service directly:
 
 ```bash
 sudo systemctl status self-hosted-ai-gpu-setup.service --no-pager
 sudo journalctl -u self-hosted-ai-gpu-setup.service -n 100 -f
 ```
 
-If you need to rerun the steps manually, the underlying commands are still:
+### 5. Verify
 
 ```bash
-sudo /opt/self-hosted-ai/terraform/scripts/install_gpu.sh
-sudo reboot
+# Get your auto-generated API key
+grep GATEWAY_API_KEY /opt/self-hosted-ai/deploy/compose.generated.yaml
+
+export TOKEN=<your-api-key>
+
+# Health check
+curl -H "Authorization: Bearer $TOKEN" http://<INSTANCE_IP>:9000/health
+
+# List models
+curl -H "Authorization: Bearer $TOKEN" http://<INSTANCE_IP>:9000/v1/models
+
+# Chat completion
+curl -H "Authorization: Bearer $TOKEN" \
+     -H "Content-Type: application/json" \
+     http://<INSTANCE_IP>:9000/v1/chat/completions \
+     -d '{"model":"chat","messages":[{"role":"user","content":"Hello"}]}'
 ```
 
-After reboot:
+### 6. Destroy when done
 
 ```bash
-sudo /opt/self-hosted-ai/terraform/scripts/install_gpu_runtime.sh
+cd terraform
+terraform destroy
 ```
 
-Verify GPU access:
+---
+
+## Deployment Modes
+
+| Mode | Command | Description |
+|------|---------|-------------|
+| Single (default) | `deploy.sh` | One runtime serving the default model |
+| Multi | `deploy.sh multi` | All configured deployments share the GPU |
+| Multi dedicated GPU | `deploy.sh multi-dedicated-gpu` | One GPU per deployment (multi-GPU instances) |
 
 ```bash
-docker run --rm --gpus all nvidia/cuda:13.0.1-base-ubuntu24.04 nvidia-smi
-```
-
-### 3. Deploy the Platform
-
-The default deployment is now automated during bootstrap.
-
-After the automation completes, the default stack should already be running:
-
-```bash
-cd /opt/self-hosted-ai/deploy
-sudo docker compose -f compose.generated.yaml --env-file .env ps
-```
-
-**Single model** (default — one model, one GPU):
-
-```bash
+# Single model (default)
 sudo /opt/self-hosted-ai/deploy/scripts/deploy.sh
-```
 
-If you want to switch later, SSH to the instance and run one of the alternate
-modes.
-
-**Multi model** (three models sharing one GPU, e.g. g6.xlarge):
-
-```bash
+# Multiple models sharing one GPU (e.g. g6.xlarge)
 sudo /opt/self-hosted-ai/deploy/scripts/deploy.sh multi
-```
 
-**Multi model with dedicated GPUs** (one GPU per model, e.g. g6.12xlarge):
-
-```bash
+# Multiple models, one GPU each (e.g. g6.12xlarge)
 sudo /opt/self-hosted-ai/deploy/scripts/deploy.sh multi-dedicated-gpu
 ```
 
-### 4. Verify
+### Deployment flow
 
-Get your API key:
+Each invocation of `deploy.sh` runs these steps in order:
 
-```bash
-grep GATEWAY_API_KEY deploy/compose.generated.yaml
-```
+1. **Validate** — `python3 tools/validate.py` checks `config/config.yaml`
+2. **Generate** — `python3 tools/generate.py` produces `deploy/.env` and `deploy/compose.generated.yaml`
+3. **Stop** — gracefully stops the previous deployment
+4. **Pull** — fetches latest container images
+5. **Start** — `docker compose up -d --wait` waits for health checks
+6. **Status** — reports final service state
 
-Check all deployments are healthy:
+---
 
-```bash
-curl -H "Authorization: Bearer $TOKEN" http://localhost:9000/health
-```
+## Configuration
 
-List available models:
+All configuration lives in [`config/config.yaml`](config/config.yaml).
 
-```bash
-curl -H "Authorization: Bearer $TOKEN" http://localhost:9000/v1/models
-```
-
-Test automatic routing:
-
-```bash
-# Routes to coder deployment
-curl -H "Authorization: Bearer $TOKEN" http://localhost:9000/v1/chat/completions \
-  -H "Content-Type: application/json" \
-  -d '{"model":"auto","messages":[{"role":"user","content":"Write a FastAPI endpoint that lists S3 buckets"}]}'
-
-# Routes to reasoning deployment
-curl -H "Authorization: Bearer $TOKEN" http://localhost:9000/v1/chat/completions \
-  -H "Content-Type: application/json" \
-  -d '{"model":"auto","messages":[{"role":"user","content":"Prove that the square root of 2 is irrational"}]}'
-
-# Explicit routing
-curl -H "Authorization: Bearer $TOKEN" http://localhost:9000/v1/chat/completions \
-  -H "Content-Type: application/json" \
-  -d '{"model":"coder","messages":[{"role":"user","content":"Hello"}]}'
-```
-
-Watch routing decisions in gateway logs:
-
-```bash
-sudo docker logs gateway --follow | python3 -m json.tool
-```
-
-Open WebUI in this deployment is configured to use the gateway's OpenAI-compatible
-API only. The Ollama integration is disabled by default, so the UI should not
-attempt to contact `host.docker.internal:11434`.
-
-### 5. OpenClaw Agent Setup
-
-[OpenClaw](https://openclaw.ai) is an autonomous AI agent that operates through
-an OpenAI-compatible API.
-
-**Installation:**
-
-```bash
-curl -fsSL https://openclaw.ai/install.sh | bash
-```
-
-**Configuration:**
-
-```bash
-openclaw config
-```
-
-Select:
-
-```
-Model
-  → Model/auth provider
-    → More...
-      → vLLM
-```
-
-**Configuration values:**
-
-| Field | Value |
-|-------|-------|
-| Base URL | `http://<SERVER_IP>:9000/v1` |
-| API Key | `<Gateway API key from compose.generated.yaml>` |
-| Model | `chat` |
-
-**Important:** Use the model provider **`vllm/chat`** in OpenClaw's configuration,
-not legacy custom provider names. This ensures compatibility with the gateway's
-routing layer.
-
-### 6. Hermes Agent Setup
-
-[Hermes Agent](https://github.com/coleam00/hermes-agent) connects using the
-standard OpenAI-compatible endpoint.
-
-**Configuration:**
-
-Add to `~/.hermes/.env`:
-
-```bash
-OPENAI_BASE_URL=http://<SERVER_IP>:9000/v1
-OPENAI_API_KEY=<Gateway API key>
-```
-
-**Endpoint compatibility:**
-
-| Endpoint | Support | Notes |
-|----------|---------|-------|
-| `POST /v1/chat/completions` | ✅ Full | Streaming and non-streaming |
-| `GET /v1/models` | ✅ Full | Lists available deployment aliases |
-| `POST /v1/embeddings` | ❌ Not implemented | Future enhancement |
-
-**Recommended Hermes configuration:**
+### Full reference
 
 ```yaml
-provider: openai
-model: chat
-streaming: true
-tool_calling: true
+project:
+  name: self-hosted-ai
+  environment: dev
+
+aws:
+  region: us-east-1
+
+instance:
+  type: g6.xlarge
+  spot: false
+  disk_size_gb: 80
+
+runtime:
+  engine: vllm       # vllm | sglang | llamacpp | ollama
+  port: 8000
+
+deployments:
+  chat:
+    runtime: vllm
+    repository: Qwen/Qwen3-4B    # any HuggingFace model ID
+    default: true                # serves as model="auto" fallback
+    parameters:
+      dtype: auto
+      enforce_eager: true
+      gpu_memory_utilization: 0.95
+      max_model_len: 32768
+
+  # Uncomment to enable multi-model mode:
+  # coder:
+  #   runtime: vllm
+  #   repository: Qwen/Qwen2.5-Coder-1.5B-Instruct
+  #   parameters:
+  #     dtype: auto
+  #     enforce_eager: true
+  #     gpu_memory_utilization: 0.27
+  #     max_model_len: 8192
+
+  # reasoning:
+  #   runtime: vllm
+  #   repository: deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B
+  #   parameters:
+  #     dtype: auto
+  #     enforce_eager: true
+  #     gpu_memory_utilization: 0.27
+  #     max_model_len: 8192
+
+storage:
+  download_dir: ./data/models
+
+huggingface:
+  token: ""                      # required for gated models
+
+features:
+  tool_calling:
+    enabled: true
+    parser: hermes               # hermes | mistral | llama3_json
+
+ui:
+  enabled: true
+  provider: open-webui
+
+gateway:
+  enabled: true
+  port: 9000
+  authentication:
+    enabled: true
+    api_key: auto                # "auto" = random key generated each deploy
+
+tls:
+  enabled: false
 ```
 
-The gateway also normalizes oversized client `max_tokens` values before
-forwarding requests. For each routed deployment, it loads the deployment's
-tokenizer, estimates prompt tokens from the forwarded chat payload, and clamps
-the requested completion budget to the remaining space inside
-`deployments.<alias>.parameters.max_model_len`.
+### GPU memory allocation (multi-model)
 
-## Agent Troubleshooting
+When running multiple models on one GPU, `gpu_memory_utilization` values across all deployments should sum to ≤ ~0.90:
 
-### Health Check
-
-Verify the gateway is reachable and healthy:
-
-```bash
-curl -H "Authorization: Bearer $TOKEN" http://localhost:9000/health
+```yaml
+# Three models on a single A10G (24GB) — leave headroom
+deployments:
+  chat:
+    parameters:
+      gpu_memory_utilization: 0.30
+  coder:
+    parameters:
+      gpu_memory_utilization: 0.30
+  reasoning:
+    parameters:
+      gpu_memory_utilization: 0.30
 ```
 
-Expected response:
+### Tool calling
+
+```yaml
+features:
+  tool_calling:
+    enabled: true
+    parser: hermes
+```
+
+vLLM flags appended when enabled: `--enable-auto-tool-choice --tool-call-parser hermes`
+
+The gateway forwards tool schemas and tool-call responses transparently. Any OpenAI-compatible tool-calling client (LangChain, OpenClaw, Hermes Agent, Open WebUI) works without modification.
+
+---
+
+## API Reference
+
+The gateway exposes a standard OpenAI-compatible API on port `9000`.
+
+All endpoints require `Authorization: Bearer <api-key>` unless authentication is disabled.
+
+### Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/` | Platform info and status |
+| `GET` | `/health` | Gateway and deployment health |
+| `GET` | `/v1/models` | List available model aliases |
+| `POST` | `/v1/chat/completions` | Chat completion (streaming + non-streaming) |
+
+### `GET /health`
 
 ```json
 {
@@ -371,216 +383,110 @@ Expected response:
 }
 ```
 
-### List Available Models
+`status` is `"degraded"` when any deployment is unhealthy.
 
-Query the deployed model aliases:
+### `POST /v1/chat/completions`
 
-```bash
-curl -H "Authorization: Bearer $TOKEN" http://localhost:9000/v1/models
+Supported fields:
+
+| Field | Notes |
+|-------|-------|
+| `model` | Deployment alias or `"auto"` for intelligent routing |
+| `messages` | Standard OpenAI messages array |
+| `stream` | `true` / `false` |
+| `max_tokens` | Clamped to `max_model_len - prompt_tokens` |
+| `max_completion_tokens` | Takes precedence over `max_tokens` when both present |
+| `tools` | OpenAI tool schemas (forwarded when tool calling is enabled) |
+| `tool_choice` | Forwarded transparently |
+
+### Context normalization
+
+The gateway estimates prompt tokens using the deployment's tokenizer and clamps `max_tokens`:
+
+```
+effective_max_tokens = min(requested_max_tokens, max_model_len - prompt_tokens)
 ```
 
-### Gateway Logs
-
-Monitor gateway requests in real time:
-
-```bash
-docker logs gateway -f
-```
-
-Filter for errors only:
-
-```bash
-docker logs gateway -f 2>&1 | grep -i error
-```
-
-### Common Issues
-
-**Wrong model selected**
-
-Symptom: `404 Model not found`
-
-Solution: Use `chat`, `coder`, or `reasoning` as the model name. For OpenClaw,
-select the `vllm/chat` provider.
+This prevents `context_length_exceeded` errors for clients that don't track token counts.
 
 ---
 
-**Authentication failure**
+## Agent Integration
 
-Symptom: `401 Missing API key` or `401 Invalid API key`
+### Architecture
 
-Solution: The gateway API key is auto-generated on each `generate.py` run. After
-regenerating deployment artifacts, update the agent configuration:
+```
+Agent Clients
+  ├─ OpenClaw
+  ├─ Hermes Agent
+  ├─ LangChain / LangGraph
+  └─ Open WebUI
+       │
+       ↓  POST /v1/chat/completions
+  AI Gateway :9000
+       │
+       ↓
+  vLLM Runtime :8000
+       │
+       ↓
+  Self-hosted LLM
+```
+
+### OpenClaw
 
 ```bash
-grep GATEWAY_API_KEY deploy/compose.generated.yaml
+openclaw config
+```
+
+Select `Model → Model/auth provider → More... → vLLM`
+
+| Field | Value |
+|-------|-------|
+| Base URL | `http://<SERVER_IP>:9000/v1` |
+| API Key | Value from `compose.generated.yaml` |
+| Model | `chat` |
+
+Use provider **`vllm/chat`** (not legacy custom names).
+
+### Hermes Agent
+
+Add to `~/.hermes/.env`:
+
+```bash
+OPENAI_BASE_URL=http://<SERVER_IP>:9000/v1
+OPENAI_API_KEY=<gateway-api-key>
+```
+
+Recommended Hermes config:
+
+```yaml
+provider: openai
+model: chat
+streaming: true
+tool_calling: true
+```
+
+### OpenAI SDK / LangChain
+
+```python
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="http://<SERVER_IP>:9000/v1",
+    api_key="<gateway-api-key>",
+)
+
+response = client.chat.completions.create(
+    model="auto",
+    messages=[{"role": "user", "content": "Hello"}],
+)
 ```
 
 ---
-
-**Context length errors**
-
-Symptom: `400 context_length_exceeded`
-
-Solution: The prompt alone exceeds the deployment's `max_model_len`. Either:
-
-- Reduce conversation history in the agent
-- Decrease `max_model_len` in `config.yaml` (increases available prompt space)
-- Deploy a model with a larger native context window
-
----
-
-**Connection refused**
-
-Symptom: Agent cannot reach `http://<SERVER_IP>:9000`
-
-Solution: Verify the gateway container is running and port 9000 is accessible:
-
-```bash
-docker ps | grep gateway
-curl http://localhost:9000/health
-```
-
-If running remotely, ensure AWS security group allows inbound TCP port 9000.
-
-## Configuration
-
-All configuration is managed in `config/config.yaml`.
-
-### Deployments
-
-```yaml
-deployments:
-  chat:
-    runtime: vllm
-    repository: Qwen/Qwen2.5-1.5B-Instruct
-    default: true
-    parameters:
-      dtype: auto
-      enforce_eager: true
-      gpu_memory_utilization: 0.27
-      max_model_len: 8192
-
-  coder:
-    runtime: vllm
-    repository: Qwen/Qwen2.5-Coder-1.5B-Instruct
-    parameters:
-      dtype: auto
-      enforce_eager: true
-      gpu_memory_utilization: 0.27
-      max_model_len: 8192
-
-  reasoning:
-    runtime: vllm
-    repository: deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B
-    parameters:
-      dtype: auto
-      enforce_eager: true
-      gpu_memory_utilization: 0.27
-      max_model_len: 8192
-```
-
-### Tool Calling
-
-Enable tool-calling support for compatible models:
-
-```yaml
-features:
-  tool_calling:
-    enabled: true
-    parser: hermes
-```
-
-When enabled, the runtime adapter appends the appropriate flags. For vLLM
-this translates to:
-
-```bash
---enable-auto-tool-choice --tool-call-parser hermes
-```
-
-The gateway transparently forwards tool schemas and tool-call responses between
-agents and vLLM. Agents that support OpenAI-compatible tool calling (OpenClaw,
-Hermes Agent, LangChain, Open WebUI) work without modification.
-
-Set `enabled: false` to disable tool calling without removing the section.
-
-### Gateway Token Ceiling
-
-The gateway computes a prompt-aware completion budget for any request that
-includes `max_tokens`.
-
-Example:
-
-```yaml
-deployments:
-  chat:
-    runtime: vllm
-    repository: Qwen/Qwen2.5-1.5B-Instruct
-    default: true
-    parameters:
-      max_model_len: 8192
-```
-
-With this deployment, a client request such as `max_tokens: 65536` is rewritten
-to the smaller of:
-
-- the client-requested `max_tokens`
-- `max_model_len - prompt_tokens`
-
-Prompt tokens are estimated with the routed model's tokenizer against the same
-chat payload the gateway forwards upstream, including tool schemas when they are
-present. This keeps the OpenAI-compatible endpoint stable for Hermes, Open WebUI,
-LangChain, the OpenAI SDK, and other clients while preserving per-deployment
-routing.
-
-### Recommended Agent Model
-
-For production agent workloads on `g6.xlarge` (A10G 24GB GPU), the following
-profile has been validated with OpenClaw and Hermes Agent:
-
-```yaml
-deployments:
-  chat:
-    runtime: vllm
-    repository: Qwen/Qwen2.5-7B-Instruct
-    default: true
-    parameters:
-      dtype: auto
-      enforce_eager: true
-      gpu_memory_utilization: 0.95
-      max_model_len: 32768
-```
-
-**Optimized for:**
-
-- A10G 24GB VRAM
-- Multi-turn agent conversations
-- Tool calling with Hermes parser
-- Long context windows (up to 32K tokens)
-- Stable vLLM operation under continuous load
-
-**Alternative for memory-constrained environments:**
-
-```yaml
-deployments:
-  chat:
-    runtime: vllm
-    repository: Qwen/Qwen2.5-1.5B-Instruct
-    default: true
-    parameters:
-      dtype: auto
-      enforce_eager: true
-      gpu_memory_utilization: 0.27
-      max_model_len: 8192
-```
-
-This smaller model fits three concurrent deployments on a single `g6.xlarge`
-in multi-mode.
 
 ## Adding a New Runtime
 
-Adding a new inference engine requires three steps:
-
-### 1. Create the adapter
+### 1. Implement the adapter
 
 Create `tools/lib/runtime/<engine>.py`:
 
@@ -594,30 +500,26 @@ class MyEngineAdapter(RuntimeAdapter):
         return "my-engine/image:latest"
 
     def build_command(self, config: dict) -> list[str]:
-        model = config["model"]
-        runtime = config["runtime"]
         return [
-            "--model", model["name"],
-            "--port", str(runtime["port"]),
+            "--model", config["model"]["name"],
+            "--port",  str(config["runtime"]["port"]),
         ]
 ```
 
 ### 2. Register it
 
-In `tools/lib/runtime/__init__.py`, import and add to the registry:
+In `tools/lib/runtime/__init__.py`:
 
 ```python
 from lib.runtime.my_engine import MyEngineAdapter
 
 _REGISTRY: dict[str, type[RuntimeAdapter]] = {
-    "vllm": VLLMAdapter,
+    "vllm":      VLLMAdapter,
     "my_engine": MyEngineAdapter,
 }
 ```
 
-### 3. Update config
-
-Set the engine in `config/config.yaml`:
+### 3. Set it in config
 
 ```yaml
 runtime:
@@ -627,31 +529,165 @@ runtime:
 
 Run `./deploy/scripts/deploy.sh` to deploy with the new runtime.
 
+---
+
 ## Project Structure
 
 ```
 config/
-  config.yaml                   ← Project configuration
+  config.yaml                   ← Project configuration (single source of truth)
+
 deploy/
-  compose.yaml                  ← Original compose reference
-  compose.generated.yaml        ← Generated compose (used by deploy)
+  compose.yaml                  ← Compose reference template
+  compose.generated.yaml        ← Generated compose (do not edit manually)
+  caddy/
+    Caddyfile                   ← Reverse proxy config
+  gateway/
+    Dockerfile                  ← Gateway container image
+    main.py                     ← ASGI entry point
+    requirements.txt
   scripts/
     deploy.sh                   ← Deployment entry point
-  caddy/
-    Caddyfile
-terraform/                      ← Infrastructure as code
+
+terraform/
+  main.tf                       ← Module composition
+  variables.tf
+  terraform.tfvars              ← Local overrides (do not commit secrets)
+  modules/
+    compute/                    ← EC2, spot, EIP, key pair
+    identity/                   ← IAM role and instance profile
+    network/                    ← VPC, subnet, routing
+    security/                   ← Security groups
+  scripts/
+    bootstrap.sh                ← Instance bootstrap (runs on first boot)
+    install_gpu.sh              ← NVIDIA driver installer
+    install_gpu_runtime.sh      ← NVIDIA container runtime installer
+    auto_gpu_setup.sh           ← Automated GPU setup orchestrator
+
 tools/
   generate.py                   ← Artifact generation CLI
   validate.py                   ← Configuration validation CLI
   requirements.txt
   lib/
-    __init__.py
-    config_loader.py            ← YAML config loader
-    compose_generator.py        ← Compose and .env generator
-    validator.py                ← Config validation logic
+    config_loader.py
+    compose_generator.py
+    validator.py
+    gateway/
+      app.py                    ← FastAPI application factory
+      routes.py                 ← Route handlers
+      service.py                ← GatewayService (business logic)
+      proxy.py                  ← RuntimeProxy (upstream HTTP client)
+      health.py                 ← Deployment health checks
+      routing/                  ← RoutingService + keyword classifier
+      deployment/               ← GatewayDeploymentRegistry
+      middleware/               ← Auth + request ID middleware
+      logging/                  ← Structured JSON logging
+      transformers/             ← Request/response transformers
     runtime/
-      __init__.py               ← Runtime adapter registry
       base.py                   ← RuntimeAdapter abstract base class
       vllm.py                   ← vLLM adapter
+    models/                     ← Model metadata registry
+    openai/                     ← OpenAI schema models and parser
 ```
 
+---
+
+## Troubleshooting
+
+### Gateway not reachable
+
+```bash
+docker ps | grep gateway
+curl http://localhost:9000/health
+```
+
+Ensure the AWS security group allows inbound TCP 9000.
+
+### `401` authentication errors
+
+The API key is auto-generated on every `generate.py` run. Fetch the current key:
+
+```bash
+grep GATEWAY_API_KEY /opt/self-hosted-ai/deploy/compose.generated.yaml
+```
+
+### `404 Model not found`
+
+Use a valid deployment alias (`chat`, `coder`, `reasoning`) or `"auto"`. Check available models:
+
+```bash
+curl -H "Authorization: Bearer $TOKEN" http://localhost:9000/v1/models
+```
+
+### `400 context_length_exceeded`
+
+The prompt exceeds `max_model_len`. Options:
+
+- Reduce conversation history in the agent
+- Increase `max_model_len` in `config.yaml` (requires more VRAM)
+- Use a model with a larger native context window
+
+### GPU setup stuck or failed
+
+```bash
+sudo systemctl status self-hosted-ai-gpu-setup.service --no-pager
+sudo journalctl -u self-hosted-ai-gpu-setup.service -n 200
+sudo tail -n 100 /var/log/auto_gpu_setup.log
+```
+
+To rerun manually:
+
+```bash
+sudo /opt/self-hosted-ai/terraform/scripts/install_gpu.sh
+sudo reboot
+# after reboot:
+sudo /opt/self-hosted-ai/terraform/scripts/install_gpu_runtime.sh
+```
+
+Verify GPU access:
+
+```bash
+docker run --rm --gpus all nvidia/cuda:12.6.0-base-ubuntu22.04 nvidia-smi
+```
+
+### Watch gateway logs
+
+```bash
+docker logs gateway -f
+# pretty-print JSON
+docker logs gateway -f | python3 -m json.tool
+# errors only
+docker logs gateway -f 2>&1 | grep -i error
+```
+
+---
+
+## Roadmap
+
+See [ROADMAP.md](ROADMAP.md) for the full roadmap. Current focus:
+
+- **Milestone 8** — Additional runtimes (SGLang, TensorRT-LLM, llama.cpp, Ollama)
+- **Milestone 9** — Observability (Prometheus metrics, Grafana dashboards)
+- **Milestone 10** — Platform CLI (`self-hosted-ai deploy/destroy/status/doctor`)
+
+---
+
+## Contributing
+
+Contributions are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) before submitting a pull request.
+
+Quick summary:
+1. Fork the repository and create a feature branch
+2. Make your changes and add tests where applicable
+3. Run `python3 tools/validate.py` to ensure config validation passes
+4. Open a pull request against `main`
+
+For bugs or feature requests, please [open an issue](https://github.com/your-org/self-hosted-ai/issues).
+
+To report a security vulnerability, see [SECURITY.md](SECURITY.md).
+
+---
+
+## License
+
+[MIT](LICENSE) — see the LICENSE file for details.

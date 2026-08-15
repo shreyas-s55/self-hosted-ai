@@ -11,7 +11,7 @@ services:
     ipc: host
     command:
     - --model
-    - Qwen/Qwen2.5-1.5B-Instruct
+    - Qwen/Qwen3-4B
     - --host
     - 0.0.0.0
     - --port
@@ -19,9 +19,9 @@ services:
     - --dtype
     - auto
     - --gpu-memory-utilization
-    - '0.27'
+    - '0.95'
     - --max-model-len
-    - '8192'
+    - '32768'
     - --enforce-eager
     - --enable-auto-tool-choice
     - --tool-call-parser
@@ -61,10 +61,9 @@ services:
       GATEWAY_RUNTIME: vllm
       GATEWAY_MODELS: chat
       GATEWAY_DEFAULT_DEPLOYMENT: chat
-      GATEWAY_DEPLOYMENTS: '{"chat": {"repository": "Qwen/Qwen2.5-1.5B-Instruct",
-        "runtime": "vllm", "runtime_url": "http://vllm:8000/v1", "runtime_service":
-        "vllm", "supports_tool_calling": true, "context_window": 8192, "max_completion_tokens":
-        8192}}'
+      GATEWAY_DEPLOYMENTS: '{"chat": {"repository": "Qwen/Qwen3-4B", "runtime": "vllm",
+        "runtime_url": "http://vllm:8000/v1", "runtime_service": "vllm", "supports_tool_calling":
+        false, "context_window": 32768, "max_completion_tokens": 32768}}'
       HUGGING_FACE_HUB_TOKEN: ${HF_TOKEN}
       GATEWAY_AUTH_ENABLED: 'true'
       GATEWAY_API_KEY: sk_selfai_bT9UhDVy4Aavi91sLYGwCQ6diYcYTwKAxn4rwwBHm7w

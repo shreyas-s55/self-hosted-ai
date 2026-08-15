@@ -46,7 +46,7 @@ def _load_legacy_models(
     models_cfg: Any,
 ) -> dict[str, DeploymentModel]:
     if not isinstance(models_cfg, dict):
-        raise ValueError("'models' must be a mapping.")
+        raise TypeError("'models' must be a mapping.")
 
     runtime_engine = str(config.get("runtime", {}).get("engine", "")) or None
 
@@ -54,7 +54,7 @@ def _load_legacy_models(
 
     for index, (alias, model_cfg) in enumerate(models_cfg.items()):
         if not isinstance(model_cfg, dict):
-            raise ValueError(
+            raise TypeError(
                 f"Configuration for deployment model '{alias}' must be a mapping."
             )
 
@@ -67,7 +67,7 @@ def _load_legacy_models(
         parameters = model_cfg.get("parameters", {})
 
         if not isinstance(parameters, dict):
-            raise ValueError(
+            raise TypeError(
                 f"'parameters' for deployment model '{alias}' must be a mapping."
             )
 
@@ -87,7 +87,7 @@ def _load_deployments(
     deployments_cfg: Any,
 ) -> dict[str, DeploymentModel]:
     if not isinstance(deployments_cfg, dict):
-        raise ValueError("'deployments' must be a mapping.")
+        raise TypeError("'deployments' must be a mapping.")
 
     runtime_engine = str(config.get("runtime", {}).get("engine", "")) or None
 
@@ -96,7 +96,7 @@ def _load_deployments(
 
     for alias, dep_cfg in deployments_cfg.items():
         if not isinstance(dep_cfg, dict):
-            raise ValueError(
+            raise TypeError(
                 f"Configuration for deployment '{alias}' must be a mapping."
             )
 
@@ -113,7 +113,7 @@ def _load_deployments(
 
         parameters = dep_cfg.get("parameters", {})
         if not isinstance(parameters, dict):
-            raise ValueError(
+            raise TypeError(
                 f"'parameters' for deployment '{alias}' must be a mapping."
             )
 

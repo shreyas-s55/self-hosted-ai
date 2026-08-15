@@ -14,8 +14,8 @@ from fastapi.responses import Response, StreamingResponse
 
 from lib.gateway.proxy import RuntimeProxy
 from lib.gateway.routing import RoutingService
-from lib.openai.parser import parse_chat_completion
 from lib.gateway.transformers import ChatRequestTransformer
+from lib.openai.parser import parse_chat_completion
 
 
 class GatewayService:

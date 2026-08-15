@@ -5,7 +5,6 @@ import sys
 
 from .formatter import JsonFormatter
 
-
 _LOGGER = None
 
 

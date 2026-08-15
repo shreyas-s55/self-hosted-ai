@@ -73,8 +73,7 @@ def generate_env(config: dict[str, Any], output_path: Path) -> None:
         env_vars["GATEWAY_API_KEY"] = resolved_api_key
 
     with open(output_path, "w") as f:
-        for key, value in env_vars.items():
-            f.write(f"{key}={value}\n")
+        f.writelines(f"{key}={value}\n" for key, value in env_vars.items())
 
 
 def generate_compose(config: dict[str, Any], output_path: Path) -> None:

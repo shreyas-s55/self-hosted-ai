@@ -1,0 +1,24 @@
+aws_region    = "us-east-1"
+project_name  = "self-hosted-ai"
+environment   = "dev"
+
+vpc_cidr           = "10.0.0.0/16"
+public_subnet_cidr = "10.0.1.0/24"
+availability_zone  = "us-east-1a"
+
+name_prefix = "self-hosted-ai-dev"
+
+ssh_allowed_cidr = [
+  "203.0.113.10/32",
+]
+
+web_allowed_cidr = [
+  "0.0.0.0/0",
+]
+
+enable_gpu       = true
+instance_type    = "g6.xlarge"
+use_spot_instance = true
+
+# Optional: attach an IAM permissions boundary for created roles.
+# permissions_boundary_arn = "arn:aws:iam::123456789012:policy/ExampleBoundary"

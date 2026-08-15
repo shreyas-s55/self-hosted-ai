@@ -2,11 +2,10 @@
 """Generate deployment artifacts from configuration."""
 
 import argparse
-
 from pathlib import Path
 
-from lib.config_loader import load_config
 from lib.compose_generator import generate_compose, generate_env
+from lib.config_loader import load_config
 
 
 def _parse_args() -> argparse.Namespace:

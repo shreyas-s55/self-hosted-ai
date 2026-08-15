@@ -26,8 +26,7 @@ async def check_runtime_health(runtime_url: str) -> bool:
         ``True`` if the runtime responds with HTTP 200, ``False`` otherwise.
     """
     base = runtime_url.rstrip("/")
-    if base.endswith("/v1"):
-        base = base[:-3]
+    base = base.removesuffix("/v1")
     health_url = f"{base}/health"
 
     try:

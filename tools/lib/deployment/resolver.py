@@ -18,16 +18,18 @@ returned by :meth:`DeploymentResolver.resolve`.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
-from typing import Any, Mapping
+from typing import Any
 
+from lib.application import DeploymentProvider
 from lib.models import MODEL_REGISTRY
 from lib.models.metadata import ModelMetadata
 
 from .loader import load_models
 from .model import DeploymentModel
-from lib.application import DeploymentProvider
+
 
 @dataclass(frozen=True, slots=True)
 class ResolvedDeployment:

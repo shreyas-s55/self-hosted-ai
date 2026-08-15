@@ -5,7 +5,7 @@ Forwards requests from gateway routes to the upstream inference runtime.
 
 from __future__ import annotations
 
-from typing import AsyncIterator
+from collections.abc import AsyncIterator
 
 import httpx
 from fastapi import Request
@@ -45,7 +45,7 @@ class RuntimeProxy:
 
         try:
             print(body.decode("utf-8"))
-        except Exception:
+        except UnicodeDecodeError:
             print(body)
 
         if stream:

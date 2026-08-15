@@ -34,7 +34,7 @@ class ChatPromptTokenEstimator:
                 add_generation_prompt=True,
             )
             return len(token_ids)
-        except Exception:
+        except (KeyError, TypeError, ValueError):
             fallback_payload = json.dumps(
                 {
                     "messages": messages,
@@ -62,7 +62,7 @@ def _load_tokenizer(repository: str):
             token=token,
             use_fast=True,
         )
-    except Exception:
+    except (OSError, TypeError, ValueError):
         return AutoTokenizer.from_pretrained(
             repository,
             token=token,

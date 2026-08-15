@@ -6,7 +6,6 @@ raw body, so request validation is left to the upstream runtime.
 """
 
 import time
-from typing import Any
 
 from pydantic import BaseModel, Field
 

@@ -13,7 +13,7 @@ class GatewayDeploymentRegistry:
         self._deployments = deployments
 
     @classmethod
-    def from_environment(cls) -> "GatewayDeploymentRegistry":
+    def from_environment(cls) -> GatewayDeploymentRegistry:
         return cls(load_deployments())
 
     def resolve(self, alias: str) -> GatewayDeployment:

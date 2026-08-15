@@ -12,4 +12,4 @@ see :mod:`lib.gateway.app` for the full list.
 
 from lib.gateway.app import GatewaySettings, create_app
 
-__all__ = ["create_app", "GatewaySettings"]
+__all__ = ["GatewaySettings", "create_app"]

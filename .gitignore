@@ -2,11 +2,14 @@
 .terraform/
 *.tfstate
 *.tfstate.*
+terraform.tfvars
+terraform/terraform.tfvars
 terraform.tfvars.json
 
 # Environment
 .env
 .env.*
+deploy/.env
 
 # Python
 __pycache__/
@@ -24,3 +27,7 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Generated deployment artifacts
+compose.generated.yaml
+deploy/compose.generated.yaml

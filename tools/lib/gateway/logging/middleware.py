@@ -1,13 +1,11 @@
 """Gateway request logging middleware."""
 
 import time
-import logging
 
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 
 from .logger import get_logger
-
 
 logger = get_logger()
 
