@@ -74,41 +74,16 @@ else
 fi
 
 #########################################
-# GPU Setup Information
-#########################################
-
-if [[ "${enable_gpu}" == "true" ]]; then
-
-    echo
-    echo "=================================================="
-    echo "GPU instance detected."
-    echo
-    echo "Run the following after SSH:"
-    echo
-    echo "sudo /opt/self-hosted-ai/terraform/scripts/install_gpu.sh"
-    echo
-    echo "=================================================="
-
-else
-
-    echo
-    echo "=================================================="
-    echo "CPU deployment selected."
-    echo "=================================================="
-
-fi
-
-#########################################
-# Deploy Application
+# Script Permissions
 #########################################
 
 chmod +x /opt/self-hosted-ai/terraform/scripts/install_gpu.sh
 
 chmod +x /opt/self-hosted-ai/terraform/scripts/install_gpu_runtime.sh
 
-chmod +x /opt/self-hosted-ai/deploy/scripts/deploy.sh
+chmod +x /opt/self-hosted-ai/terraform/scripts/auto_gpu_setup.sh
 
-/opt/self-hosted-ai/deploy/scripts/deploy.sh
+chmod +x /opt/self-hosted-ai/deploy/scripts/deploy.sh
 
 ###########################################################
 # AWS CLI
@@ -133,9 +108,54 @@ rm -rf aws awscliv2.zip
 apt-get autoremove -y
 apt-get autoclean
 
-touch "$MARKER_FILE"
+#########################################
+# Deployment Orchestration
+#########################################
 
-echo "=================================================="
-echo "Bootstrap completed successfully"
-echo "Time: $(date)"
-echo "=================================================="
+if [[ "${enable_gpu}" == "true" ]]; then
+
+    echo
+    echo "=================================================="
+    echo "GPU instance detected."
+    echo "Automated GPU provisioning enabled."
+    echo "The instance will reboot once, verify GPU access,"
+    echo "and then deploy the default single-model stack."
+    echo
+    echo "=================================================="
+
+    install -m 0644 \
+        /opt/self-hosted-ai/terraform/scripts/self-hosted-ai-gpu-setup.service \
+        /etc/systemd/system/self-hosted-ai-gpu-setup.service
+
+    systemctl daemon-reload
+    systemctl enable self-hosted-ai-gpu-setup.service
+
+else
+
+    echo
+    echo "=================================================="
+    echo "CPU deployment selected."
+    echo "=================================================="
+
+fi
+
+if [[ "${enable_gpu}" == "true" ]]; then
+    touch "$MARKER_FILE"
+
+    echo "=================================================="
+    echo "Bootstrap completed successfully"
+    echo "GPU automation will continue in the background."
+    echo "Time: $(date)"
+    echo "=================================================="
+
+    systemctl start --no-block self-hosted-ai-gpu-setup.service
+else
+    /opt/self-hosted-ai/deploy/scripts/deploy.sh
+
+    touch "$MARKER_FILE"
+
+    echo "=================================================="
+    echo "Bootstrap completed successfully"
+    echo "Time: $(date)"
+    echo "=================================================="
+fi

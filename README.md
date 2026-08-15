@@ -151,7 +151,17 @@ terraform apply
 
 ### 2. Install GPU Drivers
 
-SSH to the instance and run:
+For GPU instances, bootstrap now installs the NVIDIA driver automatically,
+reboots once, installs the NVIDIA container runtime, verifies `nvidia-smi`,
+and then runs the default single-model deployment.
+
+You can watch progress after SSH:
+
+```bash
+sudo tail -f /var/log/auto_gpu_setup.log
+```
+
+If you need to rerun the steps manually, the underlying commands are still:
 
 ```bash
 sudo /opt/self-hosted-ai/terraform/scripts/install_gpu.sh
@@ -172,11 +182,16 @@ docker run --rm --gpus all nvidia/cuda:13.0.1-base-ubuntu24.04 nvidia-smi
 
 ### 3. Deploy the Platform
 
+The default deployment is now automated during bootstrap.
+
 **Single model** (default — one model, one GPU):
 
 ```bash
 sudo /opt/self-hosted-ai/deploy/scripts/deploy.sh
 ```
+
+If you want to switch later, SSH to the instance and run one of the alternate
+modes.
 
 **Multi model** (three models sharing one GPU, e.g. g6.xlarge):
 

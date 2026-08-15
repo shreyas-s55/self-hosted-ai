@@ -1,0 +1,13 @@
+[Unit]
+Description=Self Hosted AI GPU setup continuation
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/self-hosted-ai/terraform/scripts/auto_gpu_setup.sh
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
