@@ -34,6 +34,21 @@ from lib.gateway.models import (
 router = APIRouter()
 
 
+def _exposed_models(aliases: tuple[str, ...]) -> list[str]:
+    """Return model ids exposed to clients.
+
+    When multiple deployments are configured, advertise the synthetic
+    ``auto`` model so clients such as Open WebUI can select the routing mode
+    explicitly.
+    """
+    models = list(aliases)
+
+    if len(aliases) > 1 and "auto" not in aliases:
+        models.append("auto")
+
+    return models
+
+
 @router.get("/", response_model=PlatformInfo)
 async def platform_info(request: Request) -> PlatformInfo:
     """Return platform metadata and current status."""
@@ -42,7 +57,7 @@ async def platform_info(request: Request) -> PlatformInfo:
     return PlatformInfo(
         version="0.1.0",
         runtime=settings.runtime,
-        models=list(settings.aliases),
+        models=_exposed_models(settings.aliases),
         status="ok",
     )
 
@@ -71,11 +86,11 @@ async def list_models(request: Request) -> ModelList:
     return ModelList(
         data=[
             ModelObject(
-                id=alias,
+                id=model,
                 created=int(time.time()),
                 owned_by="self-hosted",
             )
-            for alias in settings.aliases
+            for model in _exposed_models(settings.aliases)
         ]
     )
 
