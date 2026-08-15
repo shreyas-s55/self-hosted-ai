@@ -1,7 +1,7 @@
 # Self-Hosted AI
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![CI](https://github.com/your-org/self-hosted-ai/actions/workflows/ci.yml/badge.svg)](https://github.com/your-org/self-hosted-ai/actions/workflows/ci.yml)
+[![CI](https://github.com/shreyas-s55/self-hosted-ai/actions/workflows/ci.yml/badge.svg)](https://github.com/shreyas-s55/self-hosted-ai/actions/workflows/ci.yml)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 [![Terraform](https://img.shields.io/badge/terraform-1.9+-purple.svg)](https://www.terraform.io/)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
@@ -116,7 +116,7 @@ tools/lib/runtime/
 ### 1. Clone and configure
 
 ```bash
-git clone https://github.com/your-org/self-hosted-ai.git
+git clone https://github.com/shreyas-s55/self-hosted-ai.git
 cd self-hosted-ai
 ```
 
@@ -682,7 +682,7 @@ Quick summary:
 3. Run `python3 tools/validate.py` to ensure config validation passes
 4. Open a pull request against `main`
 
-For bugs or feature requests, please [open an issue](https://github.com/your-org/self-hosted-ai/issues).
+For bugs or feature requests, please [open an issue](https://github.com/shreyas-s55/self-hosted-ai/issues).
 
 To report a security vulnerability, see [SECURITY.md](SECURITY.md).
 
